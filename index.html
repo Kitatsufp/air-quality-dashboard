@@ -262,7 +262,7 @@
                 if (isTodaySelected()) {
                     fetchData();
                 }
-            }, 500); // 30 giây
+            }, 500);
         }
 
         function stopAutoRefresh() {
@@ -280,16 +280,18 @@
 
         let isFetching = false;
 
-        async function fetchData() {
+        async function fetchData(showLoading = false) {
             if (isFetching) return;
             isFetching = true;
 
-            const token = localStorage.getItem("token");
-            if (!token) return;
-
-            document.getElementById("loading").style.display = "block";
+            if (showLoading) {
+                document.getElementById("loading").style.display = "block";
+            }
 
             try {
+                const token = localStorage.getItem("token");
+                if (!token) return;
+
                 const selectedDate = document.getElementById("datePicker").value;
 
                 const res = await fetch(
@@ -339,10 +341,13 @@
             } catch (err) {
                 console.error(err);
             } finally {
-                document.getElementById("loading").style.display = "none";
+                if (showLoading) {
+                    document.getElementById("loading").style.display = "none";
+                }
                 isFetching = false;
             }
         }
+
 
 
         /* Khi đổi ngày → tự load */
