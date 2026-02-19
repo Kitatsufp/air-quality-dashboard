@@ -32,6 +32,11 @@ body {
     padding: 20px 40px;
 }
 
+body {
+    background: red !important;
+}
+
+
 /* HEADER */
 .header {
     display: flex;
