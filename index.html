@@ -10,6 +10,10 @@
     <!-- Zoom Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
+    <script>
+        Chart.register(ChartZoom);
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -345,20 +349,27 @@
                                     pan: {
                                         enabled: true,
                                         mode: 'x',
-                                        modifierKey: 'shift'   // Giữ SHIFT để kéo ngang
+                                        modifierKey: 'shift'
                                     },
                                     zoom: {
                                         wheel: {
                                             enabled: true,
-                                            modifierKey: 'ctrl' // Giữ CTRL mới zoom
+                                            modifierKey: 'ctrl'
                                         },
                                         pinch: {
                                             enabled: true
+                                        },
+                                        drag: {
+                                            enabled: true,
+                                            borderColor: 'rgba(0,0,0,0.3)',
+                                            borderWidth: 1,
+                                            backgroundColor: 'rgba(0,0,0,0.1)'
                                         },
                                         mode: 'x'
                                     }
                                 }
                             }
+
 
                         }
                     });
