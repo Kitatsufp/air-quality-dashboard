@@ -7,14 +7,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-
 <body>
 
     <div class="layout">
 
         <!-- SIDEBAR -->
         <div class="sidebar">
-            <h2>🌍 AQI</h2>
+            <h2>🌍 </h2>
             <p>Dashboard</p>
         </div>
 
@@ -23,7 +22,9 @@
 
             <div class="header">
                 <h1>Air Quality Dashboard</h1>
-                <button class="btn-logout" onclick="logout()">Logout</button>
+                <button id="logoutBtn" class="btn-logout" onclick="logout()" style="display:none;">
+                    Logout
+                </button>
             </div>
 
             <!-- LOGIN -->
@@ -39,11 +40,9 @@
             <div id="dashboard" style="display:none;">
 
                 <div class="controls card">
-                    <div>
-                        <label>📅 Chọn ngày:</label>
-                        <input type="date" id="datePicker">
-                        <button class="btn-primary" onclick="fetchData()">Load</button>
-                    </div>
+                    <label>📅 Chọn ngày:</label>
+                    <input type="date" id="datePicker">
+                    <button class="btn-primary" onclick="fetchData()">Load</button>
                 </div>
 
                 <div class="card">
@@ -57,8 +56,10 @@
     </div>
 
     <script>
+
         let chart;
 
+        // ================= LOGIN =================
         async function login() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
@@ -77,8 +78,11 @@
 
             if (data.access_token) {
                 localStorage.setItem("token", data.access_token);
+
                 document.getElementById("login-section").style.display = "none";
                 document.getElementById("dashboard").style.display = "block";
+                document.getElementById("logoutBtn").style.display = "inline-block";
+
                 setToday();
                 fetchData();
             } else {
@@ -86,17 +90,22 @@
             }
         }
 
+        // ================= LOGOUT =================
         function logout() {
             localStorage.removeItem("token");
+
             document.getElementById("dashboard").style.display = "none";
             document.getElementById("login-section").style.display = "block";
+            document.getElementById("logoutBtn").style.display = "none";
         }
 
+        // ================= DATE =================
         function setToday() {
             const today = new Date().toISOString().split("T")[0];
             document.getElementById("datePicker").value = today;
         }
 
+        // ================= FETCH DATA =================
         async function fetchData() {
             const token = localStorage.getItem("token");
             if (!token) return;
@@ -111,6 +120,11 @@
             );
 
             const data = await res.json();
+
+            if (!data || data.length === 0) {
+                alert("No data found!");
+                return;
+            }
 
             const labels = data.map(d => d.time);
             const values = data.map(d => d.air_quality);
@@ -127,9 +141,7 @@
                             tension: 0.4
                         }]
                     },
-                    options: {
-                        responsive: true
-                    }
+                    options: { responsive: true }
                 });
             } else {
                 chart.data.labels = labels;
@@ -138,12 +150,20 @@
             }
         }
 
-        if (localStorage.getItem("token")) {
-            document.getElementById("login-section").style.display = "none";
-            document.getElementById("dashboard").style.display = "block";
-            setToday();
-            fetchData();
-        }
+        // ================= AUTO LOGIN =================
+        window.onload = function () {
+            const token = localStorage.getItem("token");
+
+            if (token) {
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("dashboard").style.display = "block";
+                document.getElementById("logoutBtn").style.display = "inline-block";
+
+                setToday();
+                fetchData();
+            }
+        };
+
     </script>
 
 </body>
