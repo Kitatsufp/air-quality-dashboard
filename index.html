@@ -347,12 +347,18 @@
                                         mode: 'x'
                                     },
                                     zoom: {
-                                        wheel: { enabled: true },
-                                        pinch: { enabled: true },
+                                        wheel: {
+                                            enabled: true,
+                                            speed: 0.02
+                                        },
+                                        pinch: {
+                                            enabled: true
+                                        },
                                         mode: 'x'
                                     }
                                 }
                             }
+
                         }
                     });
                 } else {
