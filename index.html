@@ -5,14 +5,10 @@
     <title>AQI Dashboard</title>
 
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 
     <!-- Zoom Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-
-    <script>
-        Chart.register(ChartZoom);
-    </script>
 
     <style>
         * {
@@ -26,7 +22,7 @@
             background: #f3f4f6;
         }
 
-        /* ===== LOGIN ===== */
+        /* LOGIN */
         .login-wrapper {
             height: 100vh;
             display: flex;
@@ -43,15 +39,6 @@
             text-align: center;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
             color: white;
-        }
-
-        .login-card h2 {
-            margin-bottom: 10px;
-        }
-
-        .login-card p {
-            margin-bottom: 20px;
-            color: #9ca3af;
         }
 
         .login-card input {
@@ -74,15 +61,7 @@
             cursor: pointer;
         }
 
-        .btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        /* ===== DASHBOARD ===== */
-        .layout {
-            height: 100vh;
-        }
-
+        /* DASHBOARD */
         .main {
             width: 100%;
             height: 100vh;
@@ -94,7 +73,6 @@
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             margin-bottom: 15px;
         }
 
@@ -107,46 +85,12 @@
             cursor: pointer;
         }
 
-        .btn-logout:hover {
-            background: #c0392b;
-        }
-
         .card {
             background: white;
             padding: 15px;
             border-radius: 12px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
             margin-bottom: 15px;
-        }
-
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        input[type="date"] {
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-
-        .aqi-status {
-            font-weight: bold;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-
-        .good {
-            color: green;
-        }
-
-        .moderate {
-            color: orange;
-        }
-
-        .bad {
-            color: red;
         }
 
         .chart-card {
@@ -174,8 +118,15 @@
             cursor: pointer;
         }
 
-        .reset-btn:hover {
-            background: #2e59d9;
+        input[type="date"] {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        .aqi-status {
+            font-weight: bold;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -186,7 +137,6 @@
     <div id="login-section" class="login-wrapper">
         <div class="login-card">
             <h2>🌍 AQI Dashboard</h2>
-            <p>Air Quality Monitoring</p>
             <input id="username" placeholder="Username">
             <input id="password" type="password" placeholder="Password">
             <button class="btn-primary" onclick="login()">Login</button>
@@ -194,43 +144,39 @@
         </div>
     </div>
 
-    <!-- MAIN APP -->
+    <!-- DASHBOARD -->
     <div id="main-app" style="display:none;">
-        <div class="layout">
-            <div class="main">
+        <div class="main">
 
-                <div class="header">
-                    <h1>Air Quality Dashboard</h1>
-                    <button class="btn-logout" onclick="logout()">Logout</button>
-                </div>
-
-                <div class="card controls">
-                    <label>📅 Chọn ngày:</label>
-                    <input type="date" id="datePicker">
-                </div>
-
-                <div class="card chart-card">
-                    <div id="aqiStatus" class="aqi-status"></div>
-                    <button class="reset-btn" onclick="chart.resetZoom()">Reset Zoom</button>
-                    <div class="chart-container">
-                        <canvas id="chart"></canvas>
-                    </div>
-                </div>
-
+            <div class="header">
+                <h2>Air Quality Dashboard</h2>
+                <button class="btn-logout" onclick="logout()">Logout</button>
             </div>
+
+            <div class="card">
+                <label>📅 Chọn ngày:</label>
+                <input type="date" id="datePicker">
+            </div>
+
+            <div class="card chart-card">
+                <div id="aqiStatus" class="aqi-status"></div>
+                <button class="reset-btn" onclick="chart.resetZoom()">Reset Zoom</button>
+                <div class="chart-container">
+                    <canvas id="chart"></canvas>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
 
         let chart;
-        let refreshInterval = null;
-        let isFetching = false;
 
-        /* ===== LOGIN ===== */
+        /* LOGIN */
         async function login() {
-            const username = document.getElementById("username").value.trim();
-            const password = document.getElementById("password").value.trim();
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
 
             const formData = new URLSearchParams();
             formData.append("username", username);
@@ -254,7 +200,6 @@
 
         function logout() {
             localStorage.removeItem("token");
-            clearInterval(refreshInterval);
             document.getElementById("main-app").style.display = "none";
             document.getElementById("login-section").style.display = "flex";
         }
@@ -263,8 +208,7 @@
             document.getElementById("login-section").style.display = "none";
             document.getElementById("main-app").style.display = "block";
             setToday();
-            fetchData(true);
-            startAutoRefresh();
+            fetchData();
         }
 
         function setToday() {
@@ -272,126 +216,77 @@
             document.getElementById("datePicker").value = today;
         }
 
-        function startAutoRefresh() {
-            refreshInterval = setInterval(() => {
-                if (isTodaySelected()) {
-                    fetchData();
-                }
-            }, 3000);
-        }
+        /* FETCH DATA */
+        async function fetchData() {
+            const token = localStorage.getItem("token");
+            if (!token) return;
 
-        function isTodaySelected() {
-            const today = new Date().toISOString().split("T")[0];
-            return document.getElementById("datePicker").value === today;
-        }
+            const selectedDate = document.getElementById("datePicker").value;
 
-        function getAQIStatus(value) {
-            if (value <= 50) return { text: "Good 🟢", class: "good" };
-            if (value <= 100) return { text: "Moderate 🟡", class: "moderate" };
-            return { text: "Unhealthy 🔴", class: "bad" };
-        }
+            const res = await fetch(
+                `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
+                { headers: { "Authorization": `Bearer ${token}` } }
+            );
 
-        /* ===== FETCH DATA ===== */
-        async function fetchData(showLoading = false) {
-            if (isFetching) return;
-            isFetching = true;
+            const data = await res.json();
 
-            try {
-                const token = localStorage.getItem("token");
-                if (!token) return;
+            const labels = data.map(d => d.time);
+            const values = data.map(d => d.air_quality);
 
-                const selectedDate = document.getElementById("datePicker").value;
+            if (!chart) {
+                const ctx = document.getElementById("chart").getContext("2d");
 
-                const res = await fetch(
-                    `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
-                    { headers: { "Authorization": `Bearer ${token}` } }
-                );
-
-                const data = await res.json();
-
-                const labels = data.map(d => d.time);
-                const values = data.map(d => d.air_quality);
-
-                if (values.length === 0) return;
-
-                const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-                const status = getAQIStatus(avg);
-
-                const statusDiv = document.getElementById("aqiStatus");
-                statusDiv.innerText = `Average AQI: ${avg} - ${status.text}`;
-                statusDiv.className = "aqi-status " + status.class;
-
-                if (!chart) {
-                    const ctx = document.getElementById("chart").getContext("2d");
-                    chart = new Chart(ctx, {
-                        type: "line",
-                        data: {
-                            labels,
-                            datasets: [{
-                                label: "Air Quality",
-                                data: values,
-                                borderColor: "#4e73df",
-                                borderWidth: 2,
-                                fill: false,
-                                tension: 0.3
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: false,
-                            interaction: {
-                                mode: 'index',
-                                intersect: false
-                            },
-                            plugins: {
+                chart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: "Air Quality",
+                            data: values,
+                            borderColor: "#4e73df",
+                            borderWidth: 2,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            zoom: {
+                                limits: {
+                                    x: { minRange: 5 }
+                                },
+                                pan: {
+                                    enabled: true,
+                                    mode: 'x'
+                                },
                                 zoom: {
-                                    pan: {
-                                        enabled: true,
-                                        mode: 'x',
-                                        modifierKey: 'shift'
+                                    wheel: { enabled: false },   // ❌ tắt zoom bằng lăn chuột
+                                    pinch: { enabled: true },
+                                    drag: {
+                                        enabled: true,            // ✅ kéo chọn vùng zoom
+                                        backgroundColor: 'rgba(78,115,223,0.2)',
+                                        borderColor: '#4e73df',
+                                        borderWidth: 1
                                     },
-                                    zoom: {
-                                        wheel: {
-                                            enabled: true,
-                                            modifierKey: 'ctrl'
-                                        },
-                                        pinch: {
-                                            enabled: true
-                                        },
-                                        drag: {
-                                            enabled: true,
-                                            borderColor: 'rgba(0,0,0,0.3)',
-                                            borderWidth: 1,
-                                            backgroundColor: 'rgba(0,0,0,0.1)'
-                                        },
-                                        mode: 'x'
-                                    }
+                                    mode: 'x'
                                 }
                             }
-
-
                         }
-                    });
-                } else {
-                    chart.data.labels = labels;
-                    chart.data.datasets[0].data = values;
-                    chart.update();
-                }
-
-            } catch (err) {
-                console.error(err);
-            } finally {
-                isFetching = false;
+                    }
+                });
+            } else {
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = values;
+                chart.update();
             }
         }
 
-        /* Date change */
-        document.getElementById("datePicker").addEventListener("change", () => {
-            fetchData(true);
-        });
+        /* change date */
+        document.getElementById("datePicker").addEventListener("change", fetchData);
 
-        /* Auto login */
+        /* auto login */
         if (localStorage.getItem("token")) {
             showDashboard();
         }
