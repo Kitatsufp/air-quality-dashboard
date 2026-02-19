@@ -2,65 +2,218 @@
 <html>
 
 <head>
-    <title>Air Quality Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <title>AQI Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f4f6f9;
+        }
+
+        /* LOGIN */
+        .login-wrapper {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #4e73df, #224abe);
+            transition: 0.5s;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.6s ease;
+        }
+
+        .login-card h2 {
+            margin-bottom: 10px;
+        }
+
+        .login-card p {
+            margin-bottom: 20px;
+            color: gray;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 10px;
+            background: #4e73df;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-primary:hover {
+            background: #2e59d9;
+        }
+
+        /* APP LAYOUT */
+        .layout {
+            display: flex;
+            height: 100vh;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: #4e73df;
+            color: white;
+            padding: 20px;
+        }
+
+        .main {
+            flex: 1;
+            padding: 20px 40px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="date"] {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        .btn-logout {
+            background: #e74a3b;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-logout:hover {
+            background: #c0392b;
+        }
+
+        /* AQI STATUS */
+        .aqi-status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .good {
+            color: green;
+        }
+
+        .moderate {
+            color: orange;
+        }
+
+        .bad {
+            color: red;
+        }
+
+        /* LOADING */
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
 
 <body>
 
-    <div class="layout">
-
-        <!-- SIDEBAR -->
-        <div class="sidebar">
-            <h2>🌍 AQI</h2>
-            <p>Dashboard</p>
+    <!-- LOGIN -->
+    <div id="login-section" class="login-wrapper">
+        <div class="login-card">
+            <h2>🌍 AQI Dashboard</h2>
+            <p>Air Quality Monitoring</p>
+            <input id="username" placeholder="Username">
+            <input id="password" type="password" placeholder="Password">
+            <button class="btn-primary" onclick="login()">Login</button>
+            <p id="status"></p>
         </div>
+    </div>
 
-        <!-- MAIN -->
-        <div class="main">
-
-            <div class="header">
-                <h1>Air Quality Dashboard</h1>
-                <button class="btn-logout" onclick="logout()">Logout</button>
+    <!-- MAIN APP -->
+    <div id="main-app" style="display:none;">
+        <div class="layout">
+            <div class="sidebar">
+                <h2>🌍 AQI</h2>
+                <p>Professional Dashboard</p>
             </div>
 
-            <!-- LOGIN -->
-            <div id="login-section" class="card center">
-                <h3>Login</h3>
-                <input id="username" placeholder="Username">
-                <input id="password" type="password" placeholder="Password">
-                <button class="btn-primary" onclick="login()">Login</button>
-                <p id="status"></p>
-            </div>
+            <div class="main">
+                <div class="header">
+                    <h1>Air Quality Dashboard</h1>
+                    <button class="btn-logout" onclick="logout()">Logout</button>
+                </div>
 
-            <!-- DASHBOARD -->
-            <div id="dashboard" style="display:none;">
-
-                <div class="controls card">
-                    <div>
-                        <label>📅 Chọn ngày:</label>
-                        <input type="date" id="datePicker">
-                        <button class="btn-primary" onclick="fetchData()">Load</button>
-                    </div>
+                <div class="card controls">
+                    <label>📅 Chọn ngày:</label>
+                    <input type="date" id="datePicker">
+                    <button class="btn-primary" onclick="fetchData()">Load</button>
                 </div>
 
                 <div class="card">
+                    <div id="aqiStatus" class="aqi-status"></div>
                     <canvas id="chart"></canvas>
+                    <div id="loading" class="loading" style="display:none;">Loading...</div>
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
     <script>
         let chart;
 
         async function login() {
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
 
             const formData = new URLSearchParams();
             formData.append("username", username);
@@ -77,7 +230,7 @@
             if (data.access_token) {
                 localStorage.setItem("token", data.access_token);
                 document.getElementById("login-section").style.display = "none";
-                document.getElementById("dashboard").style.display = "block";
+                document.getElementById("main-app").style.display = "block";
                 setToday();
                 fetchData();
             } else {
@@ -87,8 +240,8 @@
 
         function logout() {
             localStorage.removeItem("token");
-            document.getElementById("dashboard").style.display = "none";
-            document.getElementById("login-section").style.display = "block";
+            document.getElementById("main-app").style.display = "none";
+            document.getElementById("login-section").style.display = "flex";
         }
 
         function setToday() {
@@ -96,38 +249,61 @@
             document.getElementById("datePicker").value = today;
         }
 
+        function getAQIStatus(value) {
+            if (value <= 50) return { text: "Good 🟢", class: "good" };
+            if (value <= 100) return { text: "Moderate 🟡", class: "moderate" };
+            return { text: "Unhealthy 🔴", class: "bad" };
+        }
+
         async function fetchData() {
             const token = localStorage.getItem("token");
             if (!token) return;
+
+            document.getElementById("loading").style.display = "block";
 
             const selectedDate = document.getElementById("datePicker").value;
 
             const res = await fetch(
                 `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
-                {
-                    headers: { "Authorization": `Bearer ${token}` }
-                }
+                { headers: { "Authorization": `Bearer ${token}` } }
             );
 
             const data = await res.json();
+            document.getElementById("loading").style.display = "none";
 
             const labels = data.map(d => d.time);
             const values = data.map(d => d.air_quality);
 
+            const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+            const status = getAQIStatus(avg);
+
+            const statusDiv = document.getElementById("aqiStatus");
+            statusDiv.innerText = `Average AQI: ${avg} - ${status.text}`;
+            statusDiv.className = "aqi-status " + status.class;
+
+            const ctx = document.getElementById("chart").getContext("2d");
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, "rgba(78,115,223,0.5)");
+            gradient.addColorStop(1, "rgba(78,115,223,0)");
+
             if (!chart) {
-                chart = new Chart(document.getElementById("chart"), {
+                chart = new Chart(ctx, {
                     type: "line",
                     data: {
                         labels: labels,
                         datasets: [{
                             label: "Air Quality",
                             data: values,
-                            borderWidth: 3,
-                            tension: 0.4
+                            borderColor: "#4e73df",
+                            backgroundColor: gradient,
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3
                         }]
                     },
                     options: {
-                        responsive: true
+                        responsive: true,
+                        plugins: { legend: { display: false } }
                     }
                 });
             } else {
@@ -139,7 +315,7 @@
 
         if (localStorage.getItem("token")) {
             document.getElementById("login-section").style.display = "none";
-            document.getElementById("dashboard").style.display = "block";
+            document.getElementById("main-app").style.display = "block";
             setToday();
             fetchData();
         }
