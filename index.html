@@ -9,16 +9,54 @@
 <body>
 
     <h2>Air Quality Today</h2>
+
+    <!-- LOGIN SECTION -->
+    <div id="login-section">
+        <h3>Login</h3>
+        <input id="username" placeholder="Username">
+        <input id="password" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="status"></p>
+    </div>
+
+    <!-- CHART -->
     <canvas id="chart"></canvas>
 
     <script>
         let chart;
-
-        // Lấy ngày hôm nay theo timezone local (Việt Nam)
         const today = new Date().toLocaleDateString("sv-SE");
+
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const formData = new URLSearchParams();
+            formData.append("username", username);
+            formData.append("password", password);
+
+            const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (data.access_token) {
+                localStorage.setItem("token", data.access_token);
+                document.getElementById("status").innerText = "Login success!";
+                document.getElementById("login-section").style.display = "none";
+                fetchData();
+            } else {
+                document.getElementById("status").innerText = "Login failed!";
+            }
+        }
 
         async function fetchData() {
             const token = localStorage.getItem("token");
+            if (!token) return;
 
             const res = await fetch(
                 `https://fastapi-web-3.onrender.com/blog/daily?target_date=${today}`,
@@ -28,6 +66,11 @@
                     }
                 }
             );
+
+            if (!res.ok) {
+                console.log("Unauthorized or error");
+                return;
+            }
 
             const data = await res.json();
 
@@ -58,11 +101,15 @@
             }
         }
 
-        // gọi mỗi 5 giây
+        // Nếu đã login trước đó thì auto load
+        if (localStorage.getItem("token")) {
+            document.getElementById("login-section").style.display = "none";
+            fetchData();
+        }
+
+        // Cập nhật mỗi 5 giây
         setInterval(fetchData, 5000);
 
-        // gọi lần đầu
-        fetchData();
     </script>
 
 </body>
