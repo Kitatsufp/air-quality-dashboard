@@ -3,32 +3,58 @@
 
 <head>
     <title>Air Quality Dashboard</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
+<h1 style="color:red;">TEST 123</h1>
+
 <body>
 
-    <h2>Air Quality Dashboard</h2>
+    <div class="layout">
 
-    <!-- LOGIN -->
-    <div id="login-section">
-        <h3>Login</h3>
-        <input id="username" placeholder="Username">
-        <input id="password" type="password" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <p id="status"></p>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div id="dashboard" style="display:none;">
-        <div style="margin-bottom:15px;">
-            <label>Chọn ngày:</label>
-            <input type="date" id="datePicker">
-            <button onclick="fetchData()">Load</button>
-            <button onclick="logout()">Logout</button>
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <h2>🌍 AQI</h2>
+            <p>Dashboard</p>
         </div>
 
-        <canvas id="chart"></canvas>
+        <!-- MAIN -->
+        <div class="main">
+
+            <div class="header">
+                <h1>Air Quality Dashboard</h1>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+
+            <!-- LOGIN -->
+            <div id="login-section" class="card center">
+                <h3>Login</h3>
+                <input id="username" placeholder="Username">
+                <input id="password" type="password" placeholder="Password">
+                <button class="btn-primary" onclick="login()">Login</button>
+                <p id="status"></p>
+            </div>
+
+            <!-- DASHBOARD -->
+            <div id="dashboard" style="display:none;">
+
+                <div class="controls card">
+                    <div>
+                        <label>📅 Chọn ngày:</label>
+                        <input type="date" id="datePicker">
+                        <button class="btn-primary" onclick="fetchData()">Load</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <canvas id="chart"></canvas>
+                </div>
+
+            </div>
+
+        </div>
+
     </div>
 
     <script>
@@ -44,9 +70,7 @@
 
             const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: formData
             });
 
@@ -83,16 +107,9 @@
             const res = await fetch(
                 `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
                 {
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
+                    headers: { "Authorization": `Bearer ${token}` }
                 }
             );
-
-            if (!res.ok) {
-                console.log("Error fetching data");
-                return;
-            }
 
             const data = await res.json();
 
@@ -107,12 +124,11 @@
                         datasets: [{
                             label: "Air Quality",
                             data: values,
-                            borderWidth: 2,
-                            tension: 0.3
+                            borderWidth: 3,
+                            tension: 0.4
                         }]
                     },
                     options: {
-                        animation: false,
                         responsive: true
                     }
                 });
@@ -123,14 +139,12 @@
             }
         }
 
-        // Nếu đã login trước đó
         if (localStorage.getItem("token")) {
             document.getElementById("login-section").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
             setToday();
             fetchData();
         }
-
     </script>
 
 </body>
