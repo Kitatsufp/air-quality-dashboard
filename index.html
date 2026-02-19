@@ -85,8 +85,12 @@
 
         .main {
             flex: 1;
-            padding: 20px 40px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
+
 
         .header {
             display: flex;
@@ -99,8 +103,16 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
+            max-width: 1100px;
+            margin: 0 auto;
         }
+
+        .chart-container {
+            height: 400px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
 
         .controls {
             display: flex;
@@ -187,23 +199,16 @@
                 <p>Professional Dashboard</p>
             </div>
 
-            <div class="main">
-                <div class="header">
-                    <h1>Air Quality Dashboard</h1>
-                    <button class="btn-logout" onclick="logout()">Logout</button>
-                </div>
+            <div class="card">
+                <div id="aqiStatus" class="aqi-status"></div>
 
-                <div class="card controls">
-                    <label>📅 Chọn ngày:</label>
-                    <input type="date" id="datePicker">
-                </div>
-
-                <div class="card">
-                    <div id="aqiStatus" class="aqi-status"></div>
+                <div class="chart-container">
                     <canvas id="chart"></canvas>
-                    <div id="loading" class="loading" style="display:none;">Loading...</div>
                 </div>
+
+                <div id="loading" class="loading" style="display:none;">Loading...</div>
             </div>
+
         </div>
     </div>
 
