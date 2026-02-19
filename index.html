@@ -196,7 +196,6 @@
                 <div class="card controls">
                     <label>📅 Chọn ngày:</label>
                     <input type="date" id="datePicker">
-                    <button class="btn-primary" onclick="fetchData()">Load</button>
                 </div>
 
                 <div class="card">
@@ -210,6 +209,7 @@
 
     <script>
         let chart;
+        let refreshInterval = null;
 
         async function login() {
             const username = document.getElementById("username").value.trim();
@@ -233,6 +233,7 @@
                 document.getElementById("main-app").style.display = "block";
                 setToday();
                 fetchData();
+                startAutoRefresh();
             } else {
                 document.getElementById("status").innerText = "Login failed!";
             }
@@ -240,6 +241,7 @@
 
         function logout() {
             localStorage.removeItem("token");
+            stopAutoRefresh();
             document.getElementById("main-app").style.display = "none";
             document.getElementById("login-section").style.display = "flex";
         }
@@ -247,6 +249,27 @@
         function setToday() {
             const today = new Date().toISOString().split("T")[0];
             document.getElementById("datePicker").value = today;
+        }
+
+        function isTodaySelected() {
+            const today = new Date().toISOString().split("T")[0];
+            return document.getElementById("datePicker").value === today;
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            refreshInterval = setInterval(() => {
+                if (isTodaySelected()) {
+                    fetchData();
+                }
+            }, 30000); // 30 giây
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
         }
 
         function getAQIStatus(value) {
@@ -273,6 +296,8 @@
 
             const labels = data.map(d => d.time);
             const values = data.map(d => d.air_quality);
+
+            if (values.length === 0) return;
 
             const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
             const status = getAQIStatus(avg);
@@ -303,6 +328,7 @@
                     },
                     options: {
                         responsive: true,
+                        animation: false,
                         plugins: { legend: { display: false } }
                     }
                 });
@@ -313,13 +339,21 @@
             }
         }
 
+        /* Khi đổi ngày → tự load */
+        document.getElementById("datePicker").addEventListener("change", () => {
+            fetchData();
+        });
+
+        /* Nếu đã login trước */
         if (localStorage.getItem("token")) {
             document.getElementById("login-section").style.display = "none";
             document.getElementById("main-app").style.display = "block";
             setToday();
             fetchData();
+            startAutoRefresh();
         }
     </script>
+
 
 </body>
 
