@@ -92,18 +92,8 @@
             flex-direction: column;
         }
 
-        .chart-wrapper {
-            flex: 1;
-            overflow-x: auto;
-            overflow-y: hidden;
-        }
-
-        .chart-scroll {
-            height: 100%;
-        }
-
         canvas {
-            height: 100% !important;
+            flex: 1;
         }
 
         input[type="date"] {
@@ -148,11 +138,7 @@
 
             <div class="card chart-card">
                 <div id="aqiStatus" class="aqi-status"></div>
-                <div class="chart-wrapper">
-                    <div class="chart-scroll">
-                        <canvas id="chart"></canvas>
-                    </div>
-                </div>
+                <canvas id="chart"></canvas>
             </div>
 
         </div>
@@ -162,19 +148,6 @@
 
         let chart;
         let refreshInterval;
-        let isAutoFollow = true;
-
-        const chartWrapper = document.querySelector(".chart-wrapper");
-
-        // Detect user scroll
-        chartWrapper.addEventListener("scroll", () => {
-            const tolerance = 5;
-            const atRight =
-                chartWrapper.scrollLeft + chartWrapper.clientWidth >=
-                chartWrapper.scrollWidth - tolerance;
-
-            isAutoFollow = atRight;
-        });
 
         async function login() {
             const username = document.getElementById("username").value;
@@ -249,9 +222,6 @@
             const labels = data.map(d => d.time);
             const values = data.map(d => d.air_quality);
 
-            const width = labels.length * 50;
-            document.querySelector(".chart-scroll").style.width = width + "px";
-
             if (!chart) {
                 const ctx = document.getElementById("chart").getContext("2d");
 
@@ -268,10 +238,13 @@
                         }]
                     },
                     options: {
-                        responsive: false,
+                        responsive: true,
                         animation: false,
                         scales: {
-                            y: { beginAtZero: true }
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: 500
+                            }
                         }
                     }
                 });
@@ -279,13 +252,6 @@
                 chart.data.labels = labels;
                 chart.data.datasets[0].data = values;
                 chart.update();
-            }
-
-            // Auto follow newest point
-            if (isAutoFollow) {
-                setTimeout(() => {
-                    chartWrapper.scrollLeft = chartWrapper.scrollWidth;
-                }, 50);
             }
         }
 
