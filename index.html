@@ -2,15 +2,15 @@
 <html>
 
 <head>
-    <title>Air Quality Today</title>
+    <title>Air Quality Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
 
-    <h2>Air Quality Today</h2>
+    <h2>Air Quality Dashboard</h2>
 
-    <!-- LOGIN SECTION -->
+    <!-- LOGIN -->
     <div id="login-section">
         <h3>Login</h3>
         <input id="username" placeholder="Username">
@@ -19,12 +19,20 @@
         <p id="status"></p>
     </div>
 
-    <!-- CHART -->
-    <canvas id="chart"></canvas>
+    <!-- DASHBOARD -->
+    <div id="dashboard" style="display:none;">
+        <div style="margin-bottom:15px;">
+            <label>Chọn ngày:</label>
+            <input type="date" id="datePicker">
+            <button onclick="fetchData()">Load</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <canvas id="chart"></canvas>
+    </div>
 
     <script>
         let chart;
-        const today = new Date().toLocaleDateString("sv-SE");
 
         async function login() {
             const username = document.getElementById("username").value;
@@ -46,20 +54,34 @@
 
             if (data.access_token) {
                 localStorage.setItem("token", data.access_token);
-                document.getElementById("status").innerText = "Login success!";
                 document.getElementById("login-section").style.display = "none";
+                document.getElementById("dashboard").style.display = "block";
+                setToday();
                 fetchData();
             } else {
                 document.getElementById("status").innerText = "Login failed!";
             }
         }
 
+        function logout() {
+            localStorage.removeItem("token");
+            document.getElementById("dashboard").style.display = "none";
+            document.getElementById("login-section").style.display = "block";
+        }
+
+        function setToday() {
+            const today = new Date().toISOString().split("T")[0];
+            document.getElementById("datePicker").value = today;
+        }
+
         async function fetchData() {
             const token = localStorage.getItem("token");
             if (!token) return;
 
+            const selectedDate = document.getElementById("datePicker").value;
+
             const res = await fetch(
-                `https://fastapi-web-3.onrender.com/blog/daily?target_date=${today}`,
+                `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
                 {
                     headers: {
                         "Authorization": `Bearer ${token}`
@@ -68,7 +90,7 @@
             );
 
             if (!res.ok) {
-                console.log("Unauthorized or error");
+                console.log("Error fetching data");
                 return;
             }
 
@@ -101,14 +123,13 @@
             }
         }
 
-        // Nếu đã login trước đó thì auto load
+        // Nếu đã login trước đó
         if (localStorage.getItem("token")) {
             document.getElementById("login-section").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            setToday();
             fetchData();
         }
-
-        // Cập nhật mỗi 5 giây
-        setInterval(fetchData, 5000);
 
     </script>
 
