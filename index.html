@@ -278,66 +278,72 @@
             return { text: "Unhealthy 🔴", class: "bad" };
         }
 
+        let isFetching = false;
+
         async function fetchData() {
+            if (isFetching) return;
+            isFetching = true;
+
             const token = localStorage.getItem("token");
             if (!token) return;
 
             document.getElementById("loading").style.display = "block";
 
-            const selectedDate = document.getElementById("datePicker").value;
+            try {
+                const selectedDate = document.getElementById("datePicker").value;
 
-            const res = await fetch(
-                `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
-                { headers: { "Authorization": `Bearer ${token}` } }
-            );
+                const res = await fetch(
+                    `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
+                    { headers: { "Authorization": `Bearer ${token}` } }
+                );
 
-            const data = await res.json();
-            document.getElementById("loading").style.display = "none";
+                const data = await res.json();
 
-            const labels = data.map(d => d.time);
-            const values = data.map(d => d.air_quality);
+                const labels = data.map(d => d.time);
+                const values = data.map(d => d.air_quality);
 
-            if (values.length === 0) return;
+                if (values.length === 0) return;
 
-            const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-            const status = getAQIStatus(avg);
+                const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+                const status = getAQIStatus(avg);
 
-            const statusDiv = document.getElementById("aqiStatus");
-            statusDiv.innerText = `Average AQI: ${avg} - ${status.text}`;
-            statusDiv.className = "aqi-status " + status.class;
+                const statusDiv = document.getElementById("aqiStatus");
+                statusDiv.innerText = `Average AQI: ${avg} - ${status.text}`;
+                statusDiv.className = "aqi-status " + status.class;
 
-            const ctx = document.getElementById("chart").getContext("2d");
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, "rgba(78,115,223,0.5)");
-            gradient.addColorStop(1, "rgba(78,115,223,0)");
+                if (!chart) {
+                    const ctx = document.getElementById("chart").getContext("2d");
+                    chart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: "Air Quality",
+                                data: values,
+                                borderColor: "#4e73df",
+                                fill: false,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            animation: false
+                        }
+                    });
+                } else {
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = values;
+                    chart.update();
+                }
 
-            if (!chart) {
-                chart = new Chart(ctx, {
-                    type: "line",
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: "Air Quality",
-                            data: values,
-                            borderColor: "#4e73df",
-                            backgroundColor: gradient,
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 3
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        animation: false,
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            } else {
-                chart.data.labels = labels;
-                chart.data.datasets[0].data = values;
-                chart.update();
+            } catch (err) {
+                console.error(err);
+            } finally {
+                document.getElementById("loading").style.display = "none";
+                isFetching = false;
             }
         }
+
 
         /* Khi đổi ngày → tự load */
         document.getElementById("datePicker").addEventListener("change", () => {
