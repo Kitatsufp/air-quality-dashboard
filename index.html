@@ -1,22 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
     <meta charset="UTF-8">
-    <title>Air Quality Dashboard</title>
+    <title>AQI Dashboard</title>
 
-    <!-- CoreUI -->
-    <link href="https://cdn.jsdelivr.net/npm/@coreui/coreui@4.3.0/dist/css/coreui.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body>
+<body class="bg-light">
 
-    <!-- LOGIN SCREEN -->
-    <div id="login-section" class="d-flex justify-content-center align-items-center vh-100 bg-light">
-        <div class="card shadow p-4" style="width:400px;">
+    <!-- LOGIN -->
+    <div id="login-section" class="d-flex justify-content-center align-items-center vh-100">
+        <div class="card p-4 shadow" style="width:400px;">
             <h3 class="text-center mb-3">Login</h3>
             <input id="username" class="form-control mb-3" placeholder="Username">
             <input id="password" type="password" class="form-control mb-3" placeholder="Password">
@@ -26,112 +23,85 @@
     </div>
 
     <!-- DASHBOARD -->
-    <div id="dashboard" style="display:none;">
+    <div id="dashboard" class="container mt-4" style="display:none;">
 
-        <div class="d-flex">
-
-            <!-- SIDEBAR -->
-            <div class="bg-dark text-white p-3" style="width:250px; min-height:100vh;">
-                <h4>AQI Dashboard</h4>
-                <hr class="text-secondary">
-                <p>Dashboard</p>
-            </div>
-
-            <!-- MAIN -->
-            <div class="flex-grow-1 p-4 bg-light">
-
-                <!-- HEADER -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h3>Air Quality Dashboard</h3>
-                    <button id="logoutBtn" class="btn btn-danger" onclick="logout()">Logout</button>
-                </div>
-
-                <!-- CARDS -->
-                <div class="row mb-4">
-
-                    <div class="col-md-3">
-                        <div class="card text-white bg-primary">
-                            <div class="card-body">
-                                <h6>Average AQI</h6>
-                                <h3 id="avgAqi">--</h3>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="card text-white bg-success">
-                            <div class="card-body">
-                                <h6>Max AQI</h6>
-                                <h3 id="maxAqi">--</h3>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="card text-white bg-warning">
-                            <div class="card-body">
-                                <h6>Min AQI</h6>
-                                <h3 id="minAqi">--</h3>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="card text-white bg-danger">
-                            <div class="card-body">
-                                <h6>Data Points</h6>
-                                <h3 id="countAqi">--</h3>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- DATE PICKER -->
-                <div class="card p-3 mb-4">
-                    <div class="d-flex gap-3 align-items-center">
-                        <input type="date" id="datePicker" class="form-control" style="max-width:200px;">
-                        <button class="btn btn-primary" onclick="fetchData()">Load</button>
-                    </div>
-                </div>
-
-                <!-- CHART -->
-                <div class="card p-4">
-                    <canvas id="chart"></canvas>
-                </div>
-
-            </div>
-
+        <div class="d-flex justify-content-between mb-4">
+            <h3>Air Quality Dashboard</h3>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white p-3">
+                    <h6>Average AQI</h6>
+                    <h3 id="avgAqi">--</h3>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card bg-success text-white p-3">
+                    <h6>Max AQI</h6>
+                    <h3 id="maxAqi">--</h3>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card bg-warning text-white p-3">
+                    <h6>Min AQI</h6>
+                    <h3 id="minAqi">--</h3>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card bg-danger text-white p-3">
+                    <h6>Count</h6>
+                    <h3 id="countAqi">--</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <input type="date" id="datePicker" class="form-control mb-3">
+            <button class="btn btn-primary mb-3" onclick="fetchData()">Load</button>
+            <canvas id="chart"></canvas>
+        </div>
+
     </div>
 
     <script>
 
         let chart;
 
-        // ================= LOGIN =================
         async function login() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
-            const formData = new URLSearchParams();
-            formData.append("username", username);
-            formData.append("password", password);
-
             const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: new URLSearchParams({
+                    username: username,
+                    password: password
+                })
             });
 
             const data = await res.json();
+            console.log(data);
 
-            if (data.access_token) {
+            if (res.ok && data.access_token) {
                 localStorage.setItem("token", data.access_token);
                 showDashboard();
             } else {
-                document.getElementById("status").innerText = "Login failed!";
+                document.getElementById("status").innerText =
+                    data.detail || "Login failed";
             }
+        }
+
+        function showDashboard() {
+            document.getElementById("login-section").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
         }
 
         function logout() {
@@ -140,19 +110,6 @@
             document.getElementById("login-section").style.display = "flex";
         }
 
-        function showDashboard() {
-            document.getElementById("login-section").style.display = "none";
-            document.getElementById("dashboard").style.display = "block";
-            setToday();
-            fetchData();
-        }
-
-        function setToday() {
-            const today = new Date().toISOString().split("T")[0];
-            document.getElementById("datePicker").value = today;
-        }
-
-        // ================= FETCH =================
         async function fetchData() {
             const token = localStorage.getItem("token");
             if (!token) return;
@@ -162,7 +119,7 @@
             const res = await fetch(
                 `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
                 {
-                    headers: { "Authorization": `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 }
             );
 
@@ -172,17 +129,13 @@
             const labels = data.map(d => d.time);
             const values = data.map(d => d.air_quality);
 
-            // ===== Update cards =====
             const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
-            const max = Math.max(...values);
-            const min = Math.min(...values);
 
             document.getElementById("avgAqi").innerText = avg;
-            document.getElementById("maxAqi").innerText = max;
-            document.getElementById("minAqi").innerText = min;
+            document.getElementById("maxAqi").innerText = Math.max(...values);
+            document.getElementById("minAqi").innerText = Math.min(...values);
             document.getElementById("countAqi").innerText = values.length;
 
-            // ===== Chart =====
             if (!chart) {
                 chart = new Chart(document.getElementById("chart"), {
                     type: "line",
@@ -190,12 +143,9 @@
                         labels: labels,
                         datasets: [{
                             label: "Air Quality",
-                            data: values,
-                            borderWidth: 3,
-                            tension: 0.4
+                            data: values
                         }]
-                    },
-                    options: { responsive: true }
+                    }
                 });
             } else {
                 chart.data.labels = labels;
@@ -203,13 +153,6 @@
                 chart.update();
             }
         }
-
-        // Auto login
-        window.onload = function () {
-            if (localStorage.getItem("token")) {
-                showDashboard();
-            }
-        };
 
     </script>
 
