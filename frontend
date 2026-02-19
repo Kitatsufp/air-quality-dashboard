@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Air Quality Today</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <h2>Air Quality Today</h2>
+    <canvas id="chart"></canvas>
+
+    <script>
+        let chart;
+
+        // Lấy ngày hôm nay theo timezone local (Việt Nam)
+        const today = new Date().toLocaleDateString("sv-SE");
+
+        async function fetchData() {
+            const token = localStorage.getItem("token");
+
+            const res = await fetch(
+                `https://fastapi-web-3.onrender.com/blog/daily?target_date=${today}`,
+                {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                }
+            );
+
+            const data = await res.json();
+
+            const labels = data.map(d => d.time);
+            const values = data.map(d => d.air_quality);
+
+            if (!chart) {
+                chart = new Chart(document.getElementById("chart"), {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: "Air Quality",
+                            data: values,
+                            borderWidth: 2,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        animation: false,
+                        responsive: true
+                    }
+                });
+            } else {
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = values;
+                chart.update();
+            }
+        }
+
+        // gọi mỗi 5 giây
+        setInterval(fetchData, 5000);
+
+        // gọi lần đầu
+        fetchData();
+    </script>
+
+</body>
+
+</html>
