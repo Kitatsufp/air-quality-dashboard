@@ -2,273 +2,127 @@
 <html>
 
 <head>
-    <title>AQI Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-
-        body {
-            background: #f3f4f6;
-        }
-
-        .login-wrapper {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #111827;
-        }
-
-        .login-card {
-            background: #1f2937;
-            padding: 40px;
-            border-radius: 15px;
-            width: 350px;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-            color: white;
-        }
-
-        .login-card input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border: none;
-            background: #374151;
-            color: white;
-        }
-
-        .btn-primary {
-            width: 100%;
-            padding: 12px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .main {
-            width: 100%;
-            height: 100vh;
-            padding: 20px 40px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-
-        .btn-logout {
-            background: #e74a3b;
-            color: white;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .card {
-            background: white;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-            margin-bottom: 15px;
-        }
-
-        .chart-card {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chart-wrapper {
-            flex: 1;
-            overflow-x: auto;
-            overflow-y: hidden;
-        }
-
-        .chart-scroll {
-            height: 100%;
-        }
-
-        canvas {
-            height: 100% !important;
-        }
-
-        input[type="date"] {
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-
-        .aqi-status {
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-    </style>
+    <meta charset="utf-8">
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 </head>
 
 <body>
 
-    <div id="login-section" class="login-wrapper">
-        <div class="login-card">
-            <h2>🌍 AQI Dashboard</h2>
-            <input id="username" placeholder="Username">
-            <input id="password" type="password" placeholder="Password">
-            <button class="btn-primary" onclick="login()">Login</button>
-            <p id="status"></p>
-        </div>
-    </div>
-
-    <div id="main-app" style="display:none;">
-        <div class="main">
-
-            <div class="header">
-                <h2>Air Quality Dashboard</h2>
-                <button class="btn-logout" onclick="logout()">Logout</button>
-            </div>
-
-            <div class="card">
-                <label>📅 Chọn ngày:</label>
-                <input type="date" id="datePicker">
-            </div>
-
-            <div class="card chart-card">
-                <div id="aqiStatus" class="aqi-status"></div>
-                <div class="chart-wrapper">
-                    <div class="chart-scroll">
-                        <canvas id="chart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
+    <div id="chart" style="width:100%;height:500px;"></div>
 
     <script>
+        let chart = echarts.init(document.getElementById('chart'));
 
-        let chart;
-        let refreshInterval;
+        let data = [];
+        let maxPoints = 50;
+        let isAutoFollow = true;
 
-        async function login() {
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+        // ===== ADD DATA =====
+        function addData(value) {
+            let now = new Date();
+            let time =
+                now.getHours() + ":" +
+                now.getMinutes().toString().padStart(2, '0') + ":" +
+                now.getSeconds().toString().padStart(2, '0');
 
-            const formData = new URLSearchParams();
-            formData.append("username", username);
-            formData.append("password", password);
-
-            const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData
+            data.push({
+                name: time,
+                value: [time, value]
             });
 
-            const data = await res.json();
-
-            if (data.access_token) {
-                localStorage.setItem("token", data.access_token);
-                showDashboard();
-            } else {
-                document.getElementById("status").innerText = "Login failed!";
+            if (data.length > 200) {
+                data.shift();
             }
         }
 
-        function logout() {
-            localStorage.removeItem("token");
-            clearInterval(refreshInterval);
-            document.getElementById("main-app").style.display = "none";
-            document.getElementById("login-section").style.display = "flex";
-        }
+        // ===== OPTION =====
+        let option = {
+            animation: false,
 
-        function showDashboard() {
-            document.getElementById("login-section").style.display = "none";
-            document.getElementById("main-app").style.display = "block";
-            setToday();
-            fetchData();
-            startRealtime();
-        }
+            tooltip: {
+                trigger: 'axis'
+            },
 
-        function setToday() {
-            const today = new Date().toISOString().split("T")[0];
-            document.getElementById("datePicker").value = today;
-        }
+            legend: {
+                data: ['Air Quality']
+            },
 
-        function startRealtime() {
-            refreshInterval = setInterval(() => {
-                if (isTodaySelected()) {
-                    fetchData();
+            xAxis: {
+                type: 'category',
+                boundaryGap: false
+            },
+
+            yAxis: {
+                type: 'value',
+                min: 0,
+                max: 500,
+                scale: false
+            },
+
+            dataZoom: [
+                {
+                    type: 'slider',
+                    show: true,
+                    xAxisIndex: 0,
+                    filterMode: 'none'
+                },
+                {
+                    type: 'inside',
+                    xAxisIndex: 0,
+                    filterMode: 'none'
                 }
-            }, 3000);
-        }
+            ],
 
-        function isTodaySelected() {
-            const today = new Date().toISOString().split("T")[0];
-            return document.getElementById("datePicker").value === today;
-        }
+            series: [
+                {
+                    name: 'Air Quality',
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: true,
+                    data: data
+                }
+            ]
+        };
 
-        async function fetchData() {
-            const token = localStorage.getItem("token");
-            if (!token) return;
+        chart.setOption(option);
 
-            const selectedDate = document.getElementById("datePicker").value;
+        // ===== LISTEN ZOOM EVENT =====
+        chart.on('dataZoom', function (params) {
+            let zoom = chart.getOption().dataZoom[0];
 
-            const res = await fetch(
-                `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
-                { headers: { "Authorization": `Bearer ${token}` } }
-            );
+            // Nếu đang không ở cuối → tắt auto follow
+            if (zoom.end < 99) {
+                isAutoFollow = false;
+            } else {
+                isAutoFollow = true;
+            }
+        });
 
-            const data = await res.json();
+        // ===== REALTIME UPDATE =====
+        setInterval(() => {
 
-            const labels = data.map(d => d.time);
-            const values = data.map(d => d.air_quality);
+            let randomValue = Math.round(Math.random() * 400 + 50);
+            addData(randomValue);
 
-            const width = labels.length * 50;
-            document.querySelector(".chart-scroll").style.width = width + "px";
-
-            if (!chart) {
-                const ctx = document.getElementById("chart").getContext("2d");
-
-                chart = new Chart(ctx, {
-                    type: "line",
-                    data: {
-                        labels,
-                        datasets: [{
-                            label: "Air Quality",
-                            data: values,
-                            borderColor: "#4e73df",
-                            borderWidth: 2,
-                            tension: 0.3
-                        }]
-                    },
-                    options: {
-                        responsive: false,
-                        animation: false
-                    }
+            if (isAutoFollow) {
+                chart.setOption({
+                    dataZoom: [{
+                        startValue: Math.max(data.length - maxPoints, 0),
+                        endValue: data.length - 1
+                    }],
+                    series: [{
+                        data: data
+                    }]
                 });
             } else {
-                chart.data.labels = labels;
-                chart.data.datasets[0].data = values;
-                chart.update();
+                chart.setOption({
+                    series: [{
+                        data: data
+                    }]
+                });
             }
-        }
 
-        document.getElementById("datePicker").addEventListener("change", fetchData);
-
-        if (localStorage.getItem("token")) {
-            showDashboard();
-        }
+        }, 2000);
 
     </script>
 
