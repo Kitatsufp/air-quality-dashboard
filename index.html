@@ -1,11 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
-    <meta charset="UTF-8">
-    <title>Air Quality Dashboard</title>
+    <title>AQI Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
         * {
             margin: 0;
@@ -19,94 +17,150 @@
         }
 
         /* LOGIN */
-        .login-container {
+        .login-wrapper {
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            background: linear-gradient(135deg, #4e73df, #224abe);
+            transition: 0.5s;
         }
 
-        .login-box {
+        .login-card {
             background: white;
             padding: 40px;
+            border-radius: 15px;
             width: 350px;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .login-box h2 {
             text-align: center;
-            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.6s ease;
         }
 
-        .login-box input {
+        .login-card h2 {
+            margin-bottom: 10px;
+        }
+
+        .login-card p {
+            margin-bottom: 20px;
+            color: gray;
+        }
+
+        .login-card input {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
         }
 
-        .login-box button {
+        .btn-primary {
             width: 100%;
             padding: 10px;
-            background: #007bff;
+            background: #4e73df;
             color: white;
             border: none;
+            border-radius: 8px;
             cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
         }
 
-        /* LAYOUT */
+        .btn-primary:hover {
+            background: #2e59d9;
+        }
+
+        /* APP LAYOUT */
         .layout {
             display: flex;
-            min-height: 100vh;
+            height: 100vh;
+            animation: fadeIn 0.6s ease;
         }
 
         .sidebar {
             width: 220px;
-            background: #111827;
+            background: #4e73df;
             color: white;
             padding: 20px;
         }
 
-        .sidebar h2 {
-            margin-bottom: 10px;
-        }
-
         .main {
             flex: 1;
-            padding: 30px;
+            padding: 20px 40px;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             margin-bottom: 20px;
-        }
-
-        .btn-logout {
-            background: red;
-            color: white;
-            padding: 8px 15px;
-            border: none;
-            cursor: pointer;
         }
 
         .card {
             background: white;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
             margin-bottom: 20px;
         }
 
-        .chart-container {
-            height: 400px;
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
+        input[type="date"] {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        .btn-logout {
+            background: #e74a3b;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-logout:hover {
+            background: #c0392b;
+        }
+
+        /* AQI STATUS */
         .aqi-status {
-            font-size: 20px;
-            margin-bottom: 15px;
             font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .good {
+            color: green;
+        }
+
+        .moderate {
+            color: orange;
+        }
+
+        .bad {
+            color: red;
+        }
+
+        /* LOADING */
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -114,173 +168,203 @@
 <body>
 
     <!-- LOGIN -->
-    <div id="login-section" class="login-container">
-        <div class="login-box">
-            <h2>Login</h2>
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
-            <button onclick="login()">Login</button>
-            <p id="login-error" style="color:red; margin-top:10px;"></p>
+    <div id="login-section" class="login-wrapper">
+        <div class="login-card">
+            <h2>🌍 AQI Dashboard</h2>
+            <p>Air Quality Monitoring</p>
+            <input id="username" placeholder="Username">
+            <input id="password" type="password" placeholder="Password">
+            <button class="btn-primary" onclick="login()">Login</button>
+            <p id="status"></p>
         </div>
     </div>
 
-    <!-- DASHBOARD -->
+    <!-- MAIN APP -->
     <div id="main-app" style="display:none;">
         <div class="layout">
-
             <div class="sidebar">
                 <h2>🌍 AQI</h2>
                 <p>Professional Dashboard</p>
             </div>
 
             <div class="main">
-
                 <div class="header">
                     <h1>Air Quality Dashboard</h1>
                     <button class="btn-logout" onclick="logout()">Logout</button>
                 </div>
 
-                <div class="card">
-                    <div id="aqiStatus" class="aqi-status"></div>
-                    <div class="chart-container">
-                        <canvas id="chart"></canvas>
-                    </div>
+                <div class="card controls">
+                    <label>📅 Chọn ngày:</label>
+                    <input type="date" id="datePicker">
                 </div>
 
+                <div class="card">
+                    <div id="aqiStatus" class="aqi-status"></div>
+                    <canvas id="chart"></canvas>
+                    <div id="loading" class="loading" style="display:none;">Loading...</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        const API_URL = "https://fastapi-web-3.onrender.com";
-
         let chart;
-        let realtimeInterval;
-        let maxPoints = 50;
+        let refreshInterval = null;
 
-        /* LOGIN */
-        function login() {
-            const user = document.getElementById("username").value;
-            const pass = document.getElementById("password").value;
+        async function login() {
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
 
-            if (user === "admin" && pass === "1234") {
-                localStorage.setItem("token", "loggedin");
-                showDashboard();
+            const formData = new URLSearchParams();
+            formData.append("username", username);
+            formData.append("password", password);
+
+            const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (data.access_token) {
+                localStorage.setItem("token", data.access_token);
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("main-app").style.display = "block";
+                setToday();
+                fetchData();
+                startAutoRefresh();
             } else {
-                document.getElementById("login-error").innerText = "Wrong credentials!";
+                document.getElementById("status").innerText = "Login failed!";
             }
         }
 
         function logout() {
             localStorage.removeItem("token");
-            clearInterval(realtimeInterval);
+            stopAutoRefresh();
             document.getElementById("main-app").style.display = "none";
             document.getElementById("login-section").style.display = "flex";
         }
 
-        /* SHOW DASHBOARD */
-        function showDashboard() {
+        function setToday() {
+            const today = new Date().toISOString().split("T")[0];
+            document.getElementById("datePicker").value = today;
+        }
+
+        function isTodaySelected() {
+            const today = new Date().toISOString().split("T")[0];
+            return document.getElementById("datePicker").value === today;
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            refreshInterval = setInterval(() => {
+                if (isTodaySelected()) {
+                    fetchData();
+                }
+            }, 500);
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        function getAQIStatus(value) {
+            if (value <= 50) return { text: "Good 🟢", class: "good" };
+            if (value <= 100) return { text: "Moderate 🟡", class: "moderate" };
+            return { text: "Unhealthy 🔴", class: "bad" };
+        }
+
+        let isFetching = false;
+
+        async function fetchData(showLoading = false) {
+            if (isFetching) return;
+            isFetching = true;
+
+            if (showLoading) {
+                document.getElementById("loading").style.display = "block";
+            }
+
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) return;
+
+                const selectedDate = document.getElementById("datePicker").value;
+
+                const res = await fetch(
+                    `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
+                    { headers: { "Authorization": `Bearer ${token}` } }
+                );
+
+                const data = await res.json();
+
+                const labels = data.map(d => d.time);
+                const values = data.map(d => d.air_quality);
+
+                if (values.length === 0) return;
+
+                const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+                const status = getAQIStatus(avg);
+
+                const statusDiv = document.getElementById("aqiStatus");
+                statusDiv.innerText = `Average AQI: ${avg} - ${status.text}`;
+                statusDiv.className = "aqi-status " + status.class;
+
+                if (!chart) {
+                    const ctx = document.getElementById("chart").getContext("2d");
+                    chart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: "Air Quality",
+                                data: values,
+                                borderColor: "#4e73df",
+                                fill: false,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            animation: false
+                        }
+                    });
+                } else {
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = values;
+                    chart.update();
+                }
+
+            } catch (err) {
+                console.error(err);
+            } finally {
+                if (showLoading) {
+                    document.getElementById("loading").style.display = "none";
+                }
+                isFetching = false;
+            }
+        }
+
+
+
+        /* Khi đổi ngày → tự load */
+        document.getElementById("datePicker").addEventListener("change", () => {
+            fetchData();
+        });
+
+        /* Nếu đã login trước */
+        if (localStorage.getItem("token")) {
             document.getElementById("login-section").style.display = "none";
             document.getElementById("main-app").style.display = "block";
-
-            initChart();
+            setToday();
             fetchData();
-
-            realtimeInterval = setInterval(fetchLatestPoint, 5000);
-        }
-
-        /* INIT CHART */
-        function initChart() {
-            const ctx = document.getElementById("chart").getContext("2d");
-
-            chart = new Chart(ctx, {
-                type: "line",
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: "AQI",
-                        data: [],
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    }
-                }
-            });
-        }
-
-        /* LOAD FULL DATA FIRST TIME */
-        async function fetchData() {
-            try {
-                const res = await fetch(API_URL);
-                const data = await res.json();
-
-                chart.data.labels = data.map(d => d.time);
-                chart.data.datasets[0].data = data.map(d => d.aqi);
-
-                chart.update();
-                updateStatus(data[data.length - 1].aqi);
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        /* ONLY ADD NEW POINT */
-        async function fetchLatestPoint() {
-            try {
-                const res = await fetch(API_URL);
-                const data = await res.json();
-
-                const latest = data[data.length - 1];
-
-                if (chart.data.labels[chart.data.labels.length - 1] === latest.time) return;
-
-                chart.data.labels.push(latest.time);
-                chart.data.datasets[0].data.push(latest.aqi);
-
-                if (chart.data.labels.length > maxPoints) {
-                    chart.data.labels.shift();
-                    chart.data.datasets[0].data.shift();
-                }
-
-                chart.update('none');
-                updateStatus(latest.aqi);
-
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        /* UPDATE AQI STATUS */
-        function updateStatus(aqi) {
-            const status = document.getElementById("aqiStatus");
-
-            if (aqi <= 50) {
-                status.innerText = "Good (" + aqi + ")";
-                status.style.color = "green";
-            } else if (aqi <= 100) {
-                status.innerText = "Moderate (" + aqi + ")";
-                status.style.color = "orange";
-            } else {
-                status.innerText = "Unhealthy (" + aqi + ")";
-                status.style.color = "red";
-            }
-        }
-
-        /* AUTO LOGIN IF TOKEN EXISTS */
-        if (localStorage.getItem("token")) {
-            showDashboard();
+            startAutoRefresh();
         }
     </script>
+
 
 </body>
 
