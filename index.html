@@ -122,17 +122,27 @@
         }
 
         async function login() {
-            const username = username.value;
-            const password = password.value;
+            const usernameInput = document.getElementById("username");
+            const passwordInput = document.getElementById("password");
 
-            const formData = new URLSearchParams();
-            formData.append("username", username);
-            formData.append("password", password);
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!username || !password) {
+                document.getElementById("status").innerText = "Please enter username and password";
+                return;
+            }
 
             try {
+                const formData = new URLSearchParams();
+                formData.append("username", username);
+                formData.append("password", password);
+
                 const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
                     method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
                     body: formData
                 });
 
@@ -142,12 +152,15 @@
                     localStorage.setItem("token", data.access_token);
                     showDashboard();
                 } else {
-                    status.innerText = "Login failed!";
+                    document.getElementById("status").innerText = "Login failed!";
                 }
+
             } catch (err) {
-                status.innerText = "Server sleeping... try again";
+                document.getElementById("status").innerText = "Server error...";
+                console.error(err);
             }
         }
+
 
         function showDashboard() {
             document.getElementById("login-section").style.display = "none";
