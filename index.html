@@ -1,88 +1,29 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>AQI Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<title>AQI Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <style>
-        body {
-            font-family: Arial;
-            background: #f4f4f4;
-            margin: 0;
-        }
-
-        .login {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #111;
-        }
-
-        .login-box {
-            background: #222;
-            padding: 30px;
-            border-radius: 10px;
-            color: white;
-            width: 300px;
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-        }
-
-        button {
-            padding: 10px;
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .main {
-            padding: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-        }
-
-        canvas {
-            height: 300px !important;
-        }
-    </style>
+<style>
+body { font-family: Arial; background:#f4f4f4; margin:0; }
+.main { padding:20px; }
+.card { background:white; padding:20px; margin-bottom:20px; border-radius:10px; }
+canvas { height:300px !important; }
+</style>
 </head>
+
 <body>
 
-<!-- LOGIN -->
-<div id="login" class="login">
-    <div class="login-box">
-        <h2>Login</h2>
-        <input id="user" placeholder="Username">
-        <input id="pass" type="password" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <p id="msg"></p>
+<div class="main">
+    <div class="card">
+        <h3>📡 AQI Real (Blog)</h3>
+        <canvas id="blogChart"></canvas>
     </div>
-</div>
 
-<!-- DASHBOARD -->
-<div id="app" style="display:none;">
-    <div class="main">
-        <button onclick="logout()">Logout</button>
-
-        <div class="card">
-            <h3>📡 AQI Real (Blog)</h3>
-            <canvas id="blogChart"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>📊 AQI Predict</h3>
-            <canvas id="predictChart"></canvas>
-        </div>
+    <div class="card">
+        <h3>📊 AQI Predict</h3>
+        <canvas id="predictChart"></canvas>
     </div>
 </div>
 
@@ -90,111 +31,89 @@
 let blogChart = null;
 let predictChart = null;
 
-// auto login
 window.onload = () => {
-    if (localStorage.getItem("token")) {
-        showApp();
-    }
-};
-
-// LOGIN
-async function login() {
-    const u = document.getElementById("user").value;
-    const p = document.getElementById("pass").value;
-
-    const form = new URLSearchParams();
-    form.append("username", u);
-    form.append("password", p);
-
-    const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
-        method: "POST",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: form
-    });
-
-    const data = await res.json();
-
-    if (data.access_token) {
-        localStorage.setItem("token", data.access_token);
-        showApp();
-    } else {
-        document.getElementById("msg").innerText = "Login failed";
-    }
-}
-
-// LOGOUT
-function logout() {
-    localStorage.removeItem("token");
-    location.reload();
-}
-
-// SHOW APP
-function showApp() {
-    document.getElementById("login").style.display = "none";
-    document.getElementById("app").style.display = "block";
-
     loadBlog();
     loadPredict();
-}
+};
 
 // ===== BLOG =====
 async function loadBlog() {
-    const token = localStorage.getItem("token");
+    try {
+        const res = await fetch("https://fastapi-web-3.onrender.com/blog/daily");
+        const data = await res.json();
 
-    const res = await fetch("https://fastapi-web-3.onrender.com/blog/daily", {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+        console.log("BLOG DATA:", data);
 
-    const data = await res.json();
-
-    const labels = data.map(d => d.id);
-    const values = data.map(d => d.air_quality);
-
-    const ctx = document.getElementById("blogChart");
-
-    if (blogChart) blogChart.destroy();
-
-    blogChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: "Real AQI",
-                data: values,
-                borderWidth: 2
-            }]
+        if (!Array.isArray(data) || data.length === 0) {
+            alert("Blog KHÔNG có data");
+            return;
         }
-    });
+
+        const labels = data.map((_, i) => i);
+        const values = data.map(d => d.air_quality ?? d.value);
+
+        console.log("BLOG VALUES:", values);
+
+        const ctx = document.getElementById("blogChart");
+
+        if (blogChart) blogChart.destroy();
+
+        blogChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Real AQI",
+                    data: values,
+                    borderWidth: 2
+                }]
+            }
+        });
+
+    } catch (e) {
+        console.error("BLOG ERROR:", e);
+        alert("Lỗi BLOG API");
+    }
 }
 
 // ===== PREDICT =====
 async function loadPredict() {
-    const token = localStorage.getItem("token");
+    try {
+        const res = await fetch("https://fastapi-web-3.onrender.com/predict/daily");
+        const data = await res.json();
 
-    const res = await fetch("https://fastapi-web-3.onrender.com/Predict/daily", {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+        console.log("PREDICT DATA:", data);
 
-    const data = await res.json();
-
-    const labels = data.map(d => d.id);
-    const values = data.map(d => d.air_quality);
-
-    const ctx = document.getElementById("predictChart");
-
-    if (predictChart) predictChart.destroy();
-
-    predictChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: "Predict AQI",
-                data: values,
-                borderWidth: 2
-            }]
+        if (!Array.isArray(data) || data.length === 0) {
+            alert("Predict KHÔNG có data");
+            return;
         }
-    });
+
+        const labels = data.map((_, i) => i);
+        const values = data.map(d => d.air_quality ?? d.value);
+
+        console.log("PREDICT VALUES:", values);
+
+        const ctx = document.getElementById("predictChart");
+
+        if (predictChart) predictChart.destroy();
+
+        predictChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Predict AQI",
+                    data: values,
+                    borderWidth: 2
+                }]
+            }
+        });
+
+    } catch (e) {
+        console.error("PREDICT ERROR:", e);
+        alert("Lỗi PREDICT API");
+    }
 }
 </script>
 
