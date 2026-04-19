@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="vi">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AQI Dashboard</title>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
@@ -44,6 +44,7 @@
             border: none;
             background: #374151;
             color: white;
+            outline: none;
         }
 
         .btn-primary {
@@ -54,111 +55,120 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
+            font-weight: bold;
         }
 
-        /* ĐÃ SỬA: Chuyển height thành min-height và thêm overflow-y */
         .main {
             width: 100%;
             min-height: 100vh; 
-            padding: 20px 40px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            overflow-y: auto; 
         }
 
         .header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .btn-logout {
             background: #e74a3b;
             color: white;
             border: none;
-            padding: 8px 14px;
+            padding: 8px 16px;
             border-radius: 6px;
             cursor: pointer;
         }
 
         .card {
             background: white;
-            padding: 15px;
+            padding: 20px;
             border-radius: 12px;
-            margin-bottom: 15px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-        }
-
-        .chart-card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             flex: 1;
-            display: flex;
-            flex-direction: column;
+            min-height: 400px;
         }
 
         .chart-container {
             width: 100%;
-            height: 320px;
+            height: 330px;
             position: relative;
+            margin-top: 15px;
         }
 
-        canvas {
-            display: block;
-            width: 100% !important;
-            height: 100% !important;
+        h3 {
+            color: #4b5563;
+            border-left: 4px solid #2563eb;
+            padding-left: 10px;
         }
     </style>
 </head>
-
 <body>
 
 <div id="login-section" class="login-wrapper">
     <div class="login-card">
-        <h2>🌍 AQI Dashboard</h2>
-        <input id="username" placeholder="Username">
-        <input id="password" type="password" placeholder="Password">
-        <button class="btn-primary" onclick="login()">Login</button>
-        <p id="status"></p>
+        <h2 style="margin-bottom: 20px;">🌍 AQI Dashboard</h2>
+        <input id="username" placeholder="Tên đăng nhập" value="">
+        <input id="password" type="password" placeholder="Mật khẩu" value="">
+        <button class="btn-primary" onclick="login()">Đăng nhập</button>
+        <p id="status" style="color: #ef4444; margin-top: 10px;"></p>
     </div>
 </div>
 
 <div id="main-app" style="display:none;">
     <div class="main">
-
         <div class="header">
-            <h2>Air Quality Dashboard</h2>
-            <button class="btn-logout" onclick="logout()">Logout</button>
+            <h2>Hệ thống giám sát Air Quality</h2>
+            <button class="btn-logout" onclick="logout()">Đăng xuất</button>
         </div>
 
-        <div class="card chart-card">
-            <h3>📊 Predict (8640 data)</h3>
+        <div class="card">
+            <h3>📊 Dự báo (Predict Data)</h3>
             <div class="chart-container">
                 <canvas id="historyChart"></canvas>
             </div>
         </div>
 
-        <div class="card chart-card">
-            <h3>📡 Blog (Real Sensor Data)</h3>
+        <div class="card">
+            <h3>📡 Dữ liệu cảm biến thực tế (Real Data)</h3>
             <div class="chart-container">
                 <canvas id="realtimeChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
 <script>
+let historyChart = null;
+let realtimeChart = null;
 
-let historyChart;
-let realtimeChart;
+// Kiểm tra token khi vừa load trang
+window.onload = () => {
+    if (localStorage.getItem("token")) {
+        showDashboard();
+    }
+};
 
-/* LOGIN */
 async function login() {
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+    const status = document.getElementById("status");
+    const user = document.getElementById("username").value;
+    const pass = document.getElementById("password").value;
+
+    if(!user || !pass) {
+        status.innerText = "Vui lòng nhập đầy đủ thông tin!";
+        return;
+    }
 
     const formData = new URLSearchParams();
-    formData.append("username", username);
-    formData.append("password", password);
+    formData.append("username", user);
+    formData.append("password", pass);
 
     try {
         const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
@@ -173,11 +183,11 @@ async function login() {
             localStorage.setItem("token", data.access_token);
             showDashboard();
         } else {
-            document.getElementById("status").innerText = "Login failed!";
+            status.innerText = "Sai tài khoản hoặc mật khẩu!";
         }
-    } catch (error) {
-        document.getElementById("status").innerText = "Lỗi kết nối server!";
-        console.error("Login error:", error);
+    } catch (err) {
+        status.innerText = "Lỗi kết nối Server!";
+        console.error(err);
     }
 }
 
@@ -189,134 +199,110 @@ function logout() {
 function showDashboard() {
     document.getElementById("login-section").style.display = "none";
     document.getElementById("main-app").style.display = "block";
-
-    loadPredict();
-    loadBlog();
+    
+    // Đợi DOM render xong mới vẽ chart
+    setTimeout(() => {
+        loadPredict();
+        loadBlog();
+    }, 200);
 }
 
-/* =========================
-   PREDICT CHART (8640)
-========================= */
 async function loadPredict() {
     try {
         const token = localStorage.getItem("token");
-
-        const res = await fetch(
-            "https://fastapi-web-3.onrender.com/predictions/init",
-            { headers: { "Authorization": `Bearer ${token}` } }
-        );
-
+        const res = await fetch("https://fastapi-web-3.onrender.com/predictions/init", {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
         const data = await res.json();
 
-        // ĐÃ SỬA: Kiểm tra dữ liệu có phải là mảng không
-        if (!Array.isArray(data)) {
-            console.error("Lỗi API Predict: Dữ liệu trả về không phải mảng", data);
-            return; 
+        console.log("Predict Data:", data);
+
+        if (!Array.isArray(data) || data.length === 0) {
+            console.warn("Không có dữ liệu Predict");
+            return;
         }
 
         const labels = data.map((_, i) => i);
-        const values = data.map(d => d.value || 0);
+        const values = data.map(d => d.value);
 
-        const ctx = document.getElementById("historyChart");
-
-        // Xóa chart cũ nếu có để tránh lỗi vẽ đè
-        if (historyChart) {
-            historyChart.destroy();
-        }
+        const ctx = document.getElementById("historyChart").getContext("2d");
+        if (historyChart) historyChart.destroy();
 
         historyChart = new Chart(ctx, {
             type: "line",
             data: {
-                labels,
+                labels: labels,
                 datasets: [{
-                    label: "Predict AQI",
+                    label: "AQI Dự báo",
                     data: values,
                     borderColor: "#4e73df",
+                    backgroundColor: "rgba(78, 115, 223, 0.05)",
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.3
+                    tension: 0.3,
+                    fill: true
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
             }
         });
-
-        // Fix lỗi không hiện chart ban đầu
-        setTimeout(() => {
-            if(historyChart) historyChart.resize();
-        }, 100);
-
-    } catch (error) {
-        console.error("Lỗi khi load biểu đồ Predict:", error);
+    } catch (e) {
+        console.error("Lỗi vẽ biểu đồ dự báo:", e);
     }
 }
 
-/* =========================
-   BLOG CHART (REAL DATA)
-========================= */
 async function loadBlog() {
     try {
         const token = localStorage.getItem("token");
-
-        const res = await fetch(
-            "https://fastapi-web-3.onrender.com/blog/daily",
-            { headers: { "Authorization": `Bearer ${token}` } }
-        );
-
+        const res = await fetch("https://fastapi-web-3.onrender.com/blog/daily", {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
         const data = await res.json();
 
-        // ĐÃ SỬA: Kiểm tra dữ liệu có phải là mảng không
-        if (!Array.isArray(data)) {
-            console.error("Lỗi API Blog: Dữ liệu trả về không phải mảng", data);
-            return; 
+        console.log("Blog Data:", data);
+
+        if (!Array.isArray(data) || data.length === 0) {
+            console.warn("Không có dữ liệu Blog");
+            return;
         }
 
-        const labels = data.map(d => d.time || "No Time");
-        const values = data.map(d => d.air_quality || 0);
+        const labels = data.map(d => d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : d.id);
+        const values = data.map(d => d.air_quality);
 
-        const ctx = document.getElementById("realtimeChart");
-
-        // Xóa chart cũ nếu có để tránh lỗi vẽ đè
-        if (realtimeChart) {
-            realtimeChart.destroy();
-        }
+        const ctx = document.getElementById("realtimeChart").getContext("2d");
+        if (realtimeChart) realtimeChart.destroy();
 
         realtimeChart = new Chart(ctx, {
             type: "line",
             data: {
-                labels,
+                labels: labels,
                 datasets: [{
-                    label: "Real AQI",
+                    label: "AQI Thực tế",
                     data: values,
                     borderColor: "#e74a3b",
+                    backgroundColor: "rgba(231, 74, 59, 0.05)",
                     borderWidth: 2,
-                    tension: 0.3
+                    tension: 0.3,
+                    fill: true
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
             }
         });
-
-        // Fix lỗi không hiện chart ban đầu
-        setTimeout(() => {
-            if(realtimeChart) realtimeChart.resize();
-        }, 100);
-
-    } catch (error) {
-        console.error("Lỗi khi load biểu đồ Blog:", error);
+    } catch (e) {
+        console.error("Lỗi vẽ biểu đồ thực tế:", e);
     }
 }
-
-/* AUTO LOGIN */
-if (localStorage.getItem("token")) {
-    showDashboard();
-}
-
 </script>
-
 </body>
 </html>
