@@ -56,12 +56,14 @@
             cursor: pointer;
         }
 
+        /* ĐÃ SỬA: Chuyển height thành min-height và thêm overflow-y */
         .main {
             width: 100%;
-            height: 100vh;
+            min-height: 100vh; 
             padding: 20px 40px;
             display: flex;
             flex-direction: column;
+            overflow-y: auto; 
         }
 
         .header {
@@ -93,7 +95,6 @@
             flex-direction: column;
         }
 
-        /* ✅ FIX QUAN TRỌNG */
         .chart-container {
             width: 100%;
             height: 320px;
@@ -110,7 +111,6 @@
 
 <body>
 
-<!-- LOGIN -->
 <div id="login-section" class="login-wrapper">
     <div class="login-card">
         <h2>🌍 AQI Dashboard</h2>
@@ -121,7 +121,6 @@
     </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="main-app" style="display:none;">
     <div class="main">
 
@@ -130,7 +129,6 @@
             <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
 
-        <!-- PREDICT -->
         <div class="card chart-card">
             <h3>📊 Predict (8640 data)</h3>
             <div class="chart-container">
@@ -138,7 +136,6 @@
             </div>
         </div>
 
-        <!-- BLOG -->
         <div class="card chart-card">
             <h3>📡 Blog (Real Sensor Data)</h3>
             <div class="chart-container">
@@ -156,7 +153,6 @@ let realtimeChart;
 
 /* LOGIN */
 async function login() {
-
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
@@ -164,19 +160,24 @@ async function login() {
     formData.append("username", username);
     formData.append("password", password);
 
-    const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData
-    });
+    try {
+        const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    if (data.access_token) {
-        localStorage.setItem("token", data.access_token);
-        showDashboard();
-    } else {
-        document.getElementById("status").innerText = "Login failed!";
+        if (data.access_token) {
+            localStorage.setItem("token", data.access_token);
+            showDashboard();
+        } else {
+            document.getElementById("status").innerText = "Login failed!";
+        }
+    } catch (error) {
+        document.getElementById("status").innerText = "Lỗi kết nối server!";
+        console.error("Login error:", error);
     }
 }
 
@@ -197,82 +198,117 @@ function showDashboard() {
    PREDICT CHART (8640)
 ========================= */
 async function loadPredict() {
+    try {
+        const token = localStorage.getItem("token");
 
-    const token = localStorage.getItem("token");
+        const res = await fetch(
+            "https://fastapi-web-3.onrender.com/predictions/init",
+            { headers: { "Authorization": `Bearer ${token}` } }
+        );
 
-    const res = await fetch(
-        "https://fastapi-web-3.onrender.com/predictions/init",
-        { headers: { "Authorization": `Bearer ${token}` } }
-    );
+        const data = await res.json();
 
-    const data = await res.json();
-
-    const labels = data.map((_, i) => i);
-    const values = data.map(d => d.value);
-
-    const ctx = document.getElementById("historyChart");
-
-    historyChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels,
-            datasets: [{
-                label: "Predict AQI",
-                data: values,
-                borderColor: "#4e73df",
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+        // ĐÃ SỬA: Kiểm tra dữ liệu có phải là mảng không
+        if (!Array.isArray(data)) {
+            console.error("Lỗi API Predict: Dữ liệu trả về không phải mảng", data);
+            return; 
         }
-    });
+
+        const labels = data.map((_, i) => i);
+        const values = data.map(d => d.value || 0);
+
+        const ctx = document.getElementById("historyChart");
+
+        // Xóa chart cũ nếu có để tránh lỗi vẽ đè
+        if (historyChart) {
+            historyChart.destroy();
+        }
+
+        historyChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Predict AQI",
+                    data: values,
+                    borderColor: "#4e73df",
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // Fix lỗi không hiện chart ban đầu
+        setTimeout(() => {
+            if(historyChart) historyChart.resize();
+        }, 100);
+
+    } catch (error) {
+        console.error("Lỗi khi load biểu đồ Predict:", error);
+    }
 }
 
 /* =========================
    BLOG CHART (REAL DATA)
 ========================= */
 async function loadBlog() {
+    try {
+        const token = localStorage.getItem("token");
 
-    const token = localStorage.getItem("token");
+        const res = await fetch(
+            "https://fastapi-web-3.onrender.com/blog/daily",
+            { headers: { "Authorization": `Bearer ${token}` } }
+        );
 
-    const res = await fetch(
-        "https://fastapi-web-3.onrender.com/blog/daily",
-        { headers: { "Authorization": `Bearer ${token}` } }
-    );
+        const data = await res.json();
 
-    const data = await res.json();
-
-    const labels = data.map(d => d.time || "");
-    const values = data.map(d => d.air_quality);
-
-    const ctx = document.getElementById("realtimeChart");
-
-    realtimeChart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels,
-            datasets: [{
-                label: "Real AQI",
-                data: values,
-                borderColor: "#e74a3b",
-                borderWidth: 2,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+        // ĐÃ SỬA: Kiểm tra dữ liệu có phải là mảng không
+        if (!Array.isArray(data)) {
+            console.error("Lỗi API Blog: Dữ liệu trả về không phải mảng", data);
+            return; 
         }
-    });
 
-    // ✅ FIX LỖI KHÔNG HIỆN CHART
-    setTimeout(() => {
-        realtimeChart.resize();
-    }, 100);
+        const labels = data.map(d => d.time || "No Time");
+        const values = data.map(d => d.air_quality || 0);
+
+        const ctx = document.getElementById("realtimeChart");
+
+        // Xóa chart cũ nếu có để tránh lỗi vẽ đè
+        if (realtimeChart) {
+            realtimeChart.destroy();
+        }
+
+        realtimeChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Real AQI",
+                    data: values,
+                    borderColor: "#e74a3b",
+                    borderWidth: 2,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        // Fix lỗi không hiện chart ban đầu
+        setTimeout(() => {
+            if(realtimeChart) realtimeChart.resize();
+        }, 100);
+
+    } catch (error) {
+        console.error("Lỗi khi load biểu đồ Blog:", error);
+    }
 }
 
 /* AUTO LOGIN */
