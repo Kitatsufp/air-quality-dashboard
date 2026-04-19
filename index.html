@@ -4,10 +4,7 @@
 <head>
     <title>AQI Dashboard</title>
 
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-
-    <!-- Zoom Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
     <style>
@@ -96,13 +93,15 @@
             flex-direction: column;
         }
 
-        /* ⭐ FIX QUAN TRỌNG */
+        /* ✅ FIX QUAN TRỌNG */
         .chart-container {
+            width: 100%;
+            height: 320px;
             position: relative;
-            height: 300px;
         }
 
         canvas {
+            display: block;
             width: 100% !important;
             height: 100% !important;
         }
@@ -131,7 +130,7 @@
             <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
 
-        <!-- CHART 1: PREDICT -->
+        <!-- PREDICT -->
         <div class="card chart-card">
             <h3>📊 Predict (8640 data)</h3>
             <div class="chart-container">
@@ -139,7 +138,7 @@
             </div>
         </div>
 
-        <!-- CHART 2: BLOG (REAL DATA) -->
+        <!-- BLOG -->
         <div class="card chart-card">
             <h3>📡 Blog (Real Sensor Data)</h3>
             <div class="chart-container">
@@ -195,7 +194,7 @@ function showDashboard() {
 }
 
 /* =========================
-   CHART 1: PREDICT
+   PREDICT CHART (8640)
 ========================= */
 async function loadPredict() {
 
@@ -234,7 +233,7 @@ async function loadPredict() {
 }
 
 /* =========================
-   CHART 2: BLOG REAL DATA
+   BLOG CHART (REAL DATA)
 ========================= */
 async function loadBlog() {
 
@@ -269,6 +268,11 @@ async function loadBlog() {
             maintainAspectRatio: false
         }
     });
+
+    // ✅ FIX LỖI KHÔNG HIỆN CHART
+    setTimeout(() => {
+        realtimeChart.resize();
+    }, 100);
 }
 
 /* AUTO LOGIN */
