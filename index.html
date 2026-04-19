@@ -4,7 +4,10 @@
 <head>
     <title>AQI Dashboard</title>
 
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+    <!-- Zoom Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
     <style>
@@ -142,7 +145,7 @@
             <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
 
-        <!-- HISTORY 8640 -->
+        <!-- HISTORY -->
         <div class="card chart-card">
             <div id="aqiStatus" class="aqi-status"></div>
             <button class="reset-btn" onclick="historyChart.resetZoom()">Reset Zoom</button>
@@ -199,12 +202,16 @@ function logout() {
     location.reload();
 }
 
+/* DASHBOARD FLOW */
 function showDashboard() {
     document.getElementById("login-section").style.display = "none";
     document.getElementById("main-app").style.display = "block";
 
     loadHistory();
     initRealtimeChart();
+
+    seedRealtime();
+
     setInterval(fetchRealtime, 2000);
 }
 
@@ -255,7 +262,7 @@ async function loadHistory() {
     });
 }
 
-/* REALTIME */
+/* REALTIME INIT */
 function initRealtimeChart() {
     const ctx = document.getElementById("realtimeChart").getContext("2d");
 
@@ -279,6 +286,26 @@ function initRealtimeChart() {
     });
 }
 
+/* SEED DATA (QUAN TRỌNG) */
+async function seedRealtime() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+        "https://fastapi-web-3.onrender.com/predictions/realtime?limit=20",
+        { headers: { "Authorization": `Bearer ${token}` } }
+    );
+
+    const data = await res.json();
+
+    realtimeBuffer = data.map(d => d.value);
+
+    realtimeChart.data.labels = realtimeBuffer.map((_, i) => i);
+    realtimeChart.data.datasets[0].data = realtimeBuffer;
+
+    realtimeChart.update();
+}
+
+/* STREAM REALTIME */
 async function fetchRealtime() {
     const token = localStorage.getItem("token");
 
@@ -290,18 +317,20 @@ async function fetchRealtime() {
     const data = await res.json();
     if (!data.length) return;
 
-    const point = data[data.length - 1];
+    const point = data[0];
 
-    realtimeBuffer.push(point.value);
+    if (realtimeBuffer[realtimeBuffer.length - 1] !== point.value) {
+        realtimeBuffer.push(point.value);
 
-    if (realtimeBuffer.length > 100) {
-        realtimeBuffer.shift();
+        if (realtimeBuffer.length > 100) {
+            realtimeBuffer.shift();
+        }
+
+        realtimeChart.data.labels = realtimeBuffer.map((_, i) => i);
+        realtimeChart.data.datasets[0].data = realtimeBuffer;
+
+        realtimeChart.update();
     }
-
-    realtimeChart.data.labels = realtimeBuffer.map((_, i) => i);
-    realtimeChart.data.datasets[0].data = realtimeBuffer;
-
-    realtimeChart.update();
 }
 
 /* AUTO LOGIN */
