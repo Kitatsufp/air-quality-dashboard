@@ -4,7 +4,10 @@
 <head>
     <title>AQI Dashboard</title>
 
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+    <!-- Zoom Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
     <style>
@@ -53,6 +56,7 @@
             color: white;
             border: none;
             border-radius: 8px;
+            cursor: pointer;
         }
 
         .main {
@@ -75,6 +79,7 @@
             border: none;
             padding: 8px 14px;
             border-radius: 6px;
+            cursor: pointer;
         }
 
         .card {
@@ -82,10 +87,24 @@
             padding: 15px;
             border-radius: 12px;
             margin-bottom: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
         }
 
+        .chart-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ⭐ FIX QUAN TRỌNG */
         .chart-container {
+            position: relative;
             height: 300px;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
     </style>
 </head>
@@ -108,23 +127,23 @@
     <div class="main">
 
         <div class="header">
-            <h2>AQI Dashboard</h2>
+            <h2>Air Quality Dashboard</h2>
             <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
 
         <!-- CHART 1: PREDICT -->
-        <div class="card">
+        <div class="card chart-card">
             <h3>📊 Predict (8640 data)</h3>
             <div class="chart-container">
-                <canvas id="predictChart"></canvas>
+                <canvas id="historyChart"></canvas>
             </div>
         </div>
 
-        <!-- CHART 2: REAL DATA -->
-        <div class="card">
-            <h3>📝 Blog (Real Sensor Data)</h3>
+        <!-- CHART 2: BLOG (REAL DATA) -->
+        <div class="card chart-card">
+            <h3>📡 Blog (Real Sensor Data)</h3>
             <div class="chart-container">
-                <canvas id="blogChart"></canvas>
+                <canvas id="realtimeChart"></canvas>
             </div>
         </div>
 
@@ -133,11 +152,12 @@
 
 <script>
 
-let predictChart;
-let blogChart;
+let historyChart;
+let realtimeChart;
 
 /* LOGIN */
 async function login() {
+
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
@@ -174,8 +194,11 @@ function showDashboard() {
     loadBlog();
 }
 
-/* CHART 1 - PREDICT */
+/* =========================
+   CHART 1: PREDICT
+========================= */
 async function loadPredict() {
+
     const token = localStorage.getItem("token");
 
     const res = await fetch(
@@ -188,9 +211,9 @@ async function loadPredict() {
     const labels = data.map((_, i) => i);
     const values = data.map(d => d.value);
 
-    const ctx = document.getElementById("predictChart").getContext("2d");
+    const ctx = document.getElementById("historyChart");
 
-    predictChart = new Chart(ctx, {
+    historyChart = new Chart(ctx, {
         type: "line",
         data: {
             labels,
@@ -199,15 +222,22 @@ async function loadPredict() {
                 data: values,
                 borderColor: "#4e73df",
                 borderWidth: 2,
-                tension: 0.3,
-                pointRadius: 0
+                pointRadius: 0,
+                tension: 0.3
             }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
         }
     });
 }
 
-/* CHART 2 - BLOG (REAL DATA) */
+/* =========================
+   CHART 2: BLOG REAL DATA
+========================= */
 async function loadBlog() {
+
     const token = localStorage.getItem("token");
 
     const res = await fetch(
@@ -217,23 +247,26 @@ async function loadBlog() {
 
     const data = await res.json();
 
-    const labels = data.map(d => d.time);
+    const labels = data.map(d => d.time || "");
     const values = data.map(d => d.air_quality);
 
-    const ctx = document.getElementById("blogChart").getContext("2d");
+    const ctx = document.getElementById("realtimeChart");
 
-    blogChart = new Chart(ctx, {
+    realtimeChart = new Chart(ctx, {
         type: "line",
         data: {
             labels,
             datasets: [{
                 label: "Real AQI",
                 data: values,
-                borderColor: "#1cc88a",
+                borderColor: "#e74a3b",
                 borderWidth: 2,
-                tension: 0.3,
-                pointRadius: 0
+                tension: 0.3
             }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
         }
     });
 }
