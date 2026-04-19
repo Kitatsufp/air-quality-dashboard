@@ -4,10 +4,7 @@
 <head>
     <title>AQI Dashboard</title>
 
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-
-    <!-- Zoom Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
     <style>
@@ -22,7 +19,6 @@
             background: #f3f4f6;
         }
 
-        /* LOGIN */
         .login-wrapper {
             height: 100vh;
             display: flex;
@@ -61,7 +57,6 @@
             cursor: pointer;
         }
 
-        /* DASHBOARD */
         .main {
             width: 100%;
             height: 100vh;
@@ -118,12 +113,6 @@
             cursor: pointer;
         }
 
-        input[type="date"] {
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-
         .aqi-status {
             font-weight: bold;
             margin-bottom: 10px;
@@ -133,166 +122,194 @@
 
 <body>
 
-    <!-- LOGIN -->
-    <div id="login-section" class="login-wrapper">
-        <div class="login-card">
-            <h2>🌍 AQI Dashboard</h2>
-            <input id="username" placeholder="Username">
-            <input id="password" type="password" placeholder="Password">
-            <button class="btn-primary" onclick="login()">Login</button>
-            <p id="status"></p>
-        </div>
+<!-- LOGIN -->
+<div id="login-section" class="login-wrapper">
+    <div class="login-card">
+        <h2>🌍 AQI Dashboard</h2>
+        <input id="username" placeholder="Username">
+        <input id="password" type="password" placeholder="Password">
+        <button class="btn-primary" onclick="login()">Login</button>
+        <p id="status"></p>
     </div>
+</div>
 
-    <!-- DASHBOARD -->
-    <div id="main-app" style="display:none;">
-        <div class="main">
+<!-- DASHBOARD -->
+<div id="main-app" style="display:none;">
+    <div class="main">
 
-            <div class="header">
-                <h2>Air Quality Dashboard</h2>
-                <button class="btn-logout" onclick="logout()">Logout</button>
-            </div>
-
-            <div class="card">
-                <label>📅 Chọn ngày:</label>
-                <input type="date" id="datePicker">
-            </div>
-
-            <div class="card chart-card">
-                <div id="aqiStatus" class="aqi-status"></div>
-                <button class="reset-btn" onclick="chart.resetZoom()">Reset Zoom</button>
-                <div class="chart-container">
-                    <canvas id="chart"></canvas>
-                </div>
-            </div>
-
+        <div class="header">
+            <h2>Air Quality Dashboard</h2>
+            <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
+
+        <!-- HISTORY 8640 -->
+        <div class="card chart-card">
+            <div id="aqiStatus" class="aqi-status"></div>
+            <button class="reset-btn" onclick="historyChart.resetZoom()">Reset Zoom</button>
+
+            <div class="chart-container">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- REALTIME -->
+        <div class="card chart-card">
+            <h3>📡 Realtime AQI</h3>
+            <div class="chart-container">
+                <canvas id="realtimeChart"></canvas>
+            </div>
+        </div>
+
     </div>
+</div>
 
-    <script>
+<script>
 
-        let chart;
+let historyChart;
+let realtimeChart;
+let realtimeBuffer = [];
 
-        /* LOGIN */
-        async function login() {
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+/* LOGIN */
+async function login() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-            const formData = new URLSearchParams();
-            formData.append("username", username);
-            formData.append("password", password);
+    const formData = new URLSearchParams();
+    formData.append("username", username);
+    formData.append("password", password);
 
-            const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData
-            });
+    const res = await fetch("https://fastapi-web-3.onrender.com/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData
+    });
 
-            const data = await res.json();
+    const data = await res.json();
 
-            if (data.access_token) {
-                localStorage.setItem("token", data.access_token);
-                showDashboard();
-            } else {
-                document.getElementById("status").innerText = "Login failed!";
-            }
-        }
+    if (data.access_token) {
+        localStorage.setItem("token", data.access_token);
+        showDashboard();
+    } else {
+        document.getElementById("status").innerText = "Login failed!";
+    }
+}
 
-        function logout() {
-            localStorage.removeItem("token");
-            document.getElementById("main-app").style.display = "none";
-            document.getElementById("login-section").style.display = "flex";
-        }
+function logout() {
+    localStorage.removeItem("token");
+    location.reload();
+}
 
-        function showDashboard() {
-            document.getElementById("login-section").style.display = "none";
-            document.getElementById("main-app").style.display = "block";
-            setToday();
-            fetchData();
-        }
+function showDashboard() {
+    document.getElementById("login-section").style.display = "none";
+    document.getElementById("main-app").style.display = "block";
 
-        function setToday() {
-            const today = new Date().toISOString().split("T")[0];
-            document.getElementById("datePicker").value = today;
-        }
+    loadHistory();
+    initRealtimeChart();
+    setInterval(fetchRealtime, 2000);
+}
 
-        /* FETCH DATA */
-        async function fetchData() {
-            const token = localStorage.getItem("token");
-            if (!token) return;
+/* HISTORY 8640 */
+async function loadHistory() {
+    const token = localStorage.getItem("token");
 
-            const selectedDate = document.getElementById("datePicker").value;
+    const res = await fetch(
+        "https://fastapi-web-3.onrender.com/predictions/init",
+        { headers: { "Authorization": `Bearer ${token}` } }
+    );
 
-            const res = await fetch(
-                `https://fastapi-web-3.onrender.com/blog/daily?target_date=${selectedDate}`,
-                { headers: { "Authorization": `Bearer ${token}` } }
-            );
+    const data = await res.json();
 
-            const data = await res.json();
+    const labels = data.map((_, i) => i);
+    const values = data.map(d => d.value);
 
-            const labels = data.map(d => d.time);
-            const values = data.map(d => d.air_quality);
+    const ctx = document.getElementById("historyChart").getContext("2d");
 
-            if (!chart) {
-                const ctx = document.getElementById("chart").getContext("2d");
-
-                chart = new Chart(ctx, {
-                    type: "line",
-                    data: {
-                        labels,
-                        datasets: [{
-                            label: "Air Quality",
-                            data: values,
-                            borderColor: "#4e73df",
-                            borderWidth: 2,
-                            tension: 0.3
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: false,
-                        plugins: {
-                            zoom: {
-                                limits: {
-                                    x: { minRange: 5 }
-                                },
-                                pan: {
-                                    enabled: true,
-                                    mode: 'x'
-                                },
-                                zoom: {
-                                    wheel: { enabled: false },   // ❌ tắt zoom bằng lăn chuột
-                                    pinch: { enabled: true },
-                                    drag: {
-                                        enabled: true,            // ✅ kéo chọn vùng zoom
-                                        backgroundColor: 'rgba(78,115,223,0.2)',
-                                        borderColor: '#4e73df',
-                                        borderWidth: 1
-                                    },
-                                    mode: 'x'
-                                }
-                            }
-                        }
+    historyChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: "Predicted AQI",
+                data: values,
+                borderColor: "#4e73df",
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                zoom: {
+                    pan: { enabled: true, mode: "x" },
+                    zoom: {
+                        wheel: { enabled: false },
+                        drag: { enabled: true },
+                        mode: "x"
                     }
-                });
-            } else {
-                chart.data.labels = labels;
-                chart.data.datasets[0].data = values;
-                chart.update();
+                }
             }
         }
+    });
+}
 
-        /* change date */
-        document.getElementById("datePicker").addEventListener("change", fetchData);
+/* REALTIME */
+function initRealtimeChart() {
+    const ctx = document.getElementById("realtimeChart").getContext("2d");
 
-        /* auto login */
-        if (localStorage.getItem("token")) {
-            showDashboard();
+    realtimeChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Realtime AQI",
+                data: [],
+                borderColor: "#e74a3b",
+                borderWidth: 2,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false
         }
+    });
+}
 
-    </script>
+async function fetchRealtime() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+        "https://fastapi-web-3.onrender.com/predictions/realtime?limit=1",
+        { headers: { "Authorization": `Bearer ${token}` } }
+    );
+
+    const data = await res.json();
+    if (!data.length) return;
+
+    const point = data[data.length - 1];
+
+    realtimeBuffer.push(point.value);
+
+    if (realtimeBuffer.length > 100) {
+        realtimeBuffer.shift();
+    }
+
+    realtimeChart.data.labels = realtimeBuffer.map((_, i) => i);
+    realtimeChart.data.datasets[0].data = realtimeBuffer;
+
+    realtimeChart.update();
+}
+
+/* AUTO LOGIN */
+if (localStorage.getItem("token")) {
+    showDashboard();
+}
+
+</script>
 
 </body>
-
 </html>
