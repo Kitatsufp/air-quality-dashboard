@@ -391,7 +391,24 @@
         let currentUser = null;
         let chart = null;
 
-        document.getElementById('dateInput').valueAsDate = new Date();
+        // Khôi phục token từ localStorage khi trang load
+        window.addEventListener('load', () => {
+            const savedToken = localStorage.getItem('authToken');
+            const savedUser = localStorage.getItem('currentUser');
+            
+            if (savedToken && savedUser) {
+                currentToken = savedToken;
+                currentUser = JSON.parse(savedUser);
+                document.getElementById('userName').textContent = currentUser.name || currentUser.email;
+                document.getElementById('dateInput').valueAsDate = new Date();
+                showLogin(false);
+                
+                // Auto load dữ liệu
+                loadChartData();
+            } else {
+                document.getElementById('dateInput').valueAsDate = new Date();
+            }
+        });
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -421,6 +438,10 @@
                 if (userResponse.ok) {
                     currentUser = await userResponse.json();
                     document.getElementById('userName').textContent = currentUser.name || email;
+                    
+                    // Lưu token và user vào localStorage
+                    localStorage.setItem('authToken', currentToken);
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 }
 
                 showLogin(false);
@@ -432,6 +453,7 @@
             }
         });
 
+        // Auto-load khi thay đổi ngày
         document.getElementById('dateInput').addEventListener('change', loadChartData);
 
         async function loadChartData() {
@@ -627,6 +649,11 @@
         function logout() {
             currentToken = null;
             currentUser = null;
+            
+            // Xóa token từ localStorage
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            
             showLogin(true);
             document.getElementById('loginForm').reset();
             if (chart) chart.destroy();
