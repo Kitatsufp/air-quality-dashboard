@@ -28,6 +28,7 @@
     --eco2-color: #b388ff;
     --etoh-color: #ff7043;
     --pred-color: rgba(255,68,68,0.8);
+    --raw-color: #ffab40;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -135,14 +136,12 @@
     position: relative;
   }
 
-  /* Main IAQ panel spans 3 cols */
   .panel-iaq-main {
     grid-column: 1 / 4;
     grid-row: 1;
     padding: 20px 24px;
   }
 
-  /* Stats panel right */
   .panel-stats {
     grid-column: 4;
     grid-row: 1 / 3;
@@ -151,7 +150,6 @@
     gap: 0;
   }
 
-  /* Bottom row - TVOC, eCO2, EtOH */
   .panel-tvoc { grid-column: 1; grid-row: 2; }
   .panel-eco2 { grid-column: 2; grid-row: 2; }
   .panel-etoh { grid-column: 3; grid-row: 2; }
@@ -183,17 +181,25 @@
 
   /* ── LEGEND ── */
   .legend {
-    display: flex; gap: 20px; margin-bottom: 10px;
+    display: flex; gap: 20px; margin-bottom: 10px; flex-wrap: wrap;
   }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-dim); }
   .legend-line { width: 24px; height: 2px; }
-  .legend-line.actual { background: var(--iaq-color); }
-  .legend-line.pred { border-top: 2px dashed var(--red); background: none; }
+  .legend-line.actual  { background: var(--iaq-color); }
+  .legend-line.pred    { border-top: 2px dashed var(--red); background: none; }
+  .legend-line.raw     { border-top: 2px dotted var(--raw-color); background: none; }
 
   /* ── CHART WRAPPER ── */
   .chart-wrap { position: relative; }
   .chart-wrap.main { height: 200px; }
   .chart-wrap.sub  { height: 140px; }
+
+  /* ── SUB LEGEND ── */
+  .sub-legend {
+    display: flex; gap: 14px; margin-bottom: 8px;
+  }
+  .sub-legend-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--text-dim); }
+  .sub-legend-dot { width: 20px; height: 1.5px; }
 
   /* ── STATS PANEL ── */
   .stats-section {
@@ -211,11 +217,12 @@
   }
   .stat-key { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
   .stat-num { font-family: 'Space Mono', monospace; font-size: 14px; }
-  .stat-num.green { color: var(--green); }
+  .stat-num.green  { color: var(--green); }
   .stat-num.yellow { color: var(--yellow); }
-  .stat-num.red { color: var(--red); }
-  .stat-num.blue { color: var(--blue); }
-  .stat-num.dim { color: var(--text-dim); }
+  .stat-num.red    { color: var(--red); }
+  .stat-num.blue   { color: var(--blue); }
+  .stat-num.orange { color: var(--orange); }
+  .stat-num.dim    { color: var(--text-dim); }
 
   /* ── EVAL SECTION ── */
   .eval-bar-wrap { margin-bottom: 10px; }
@@ -231,9 +238,9 @@
     font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
     border: 1px solid; margin-top: 8px;
   }
-  .quality-badge.good { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+  .quality-badge.good     { color: var(--green);  border-color: var(--green);  background: var(--green-dim); }
   .quality-badge.moderate { color: var(--yellow); border-color: var(--yellow); background: rgba(255,215,64,.1); }
-  .quality-badge.poor { color: var(--red); border-color: var(--red); background: rgba(255,68,68,.1); }
+  .quality-badge.poor     { color: var(--red);    border-color: var(--red);    background: rgba(255,68,68,.1); }
 
   /* ── COMPARISON TABLE ── */
   .compare-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
@@ -243,6 +250,9 @@
   }
   .compare-table td { font-size: 11px; padding: 5px 0; border-bottom: 1px solid var(--text-muted); }
   .compare-table td:last-child { text-align: right; }
+  .compare-table td:nth-child(2),
+  .compare-table td:nth-child(3) { text-align: right; }
+  .col-raw { color: var(--orange); font-size: 10px; }
 
   /* ── NO DATA / LOADING ── */
   .overlay-msg {
@@ -260,7 +270,7 @@
       grid-template-rows: auto;
     }
     .panel-iaq-main { grid-column: 1 / 3; grid-row: 1; }
-    .panel-stats { grid-column: 1 / 3; grid-row: 2; grid-row: auto; display: grid; grid-template-columns: repeat(3,1fr); }
+    .panel-stats { grid-column: 1 / 3; grid-row: 2; display: grid; grid-template-columns: repeat(3,1fr); }
     .panel-tvoc { grid-column: 1; grid-row: 3; }
     .panel-eco2 { grid-column: 2; grid-row: 3; }
     .panel-etoh { grid-column: 1 / 3; grid-row: 4; }
@@ -316,6 +326,7 @@
       <div class="legend">
         <div class="legend-item"><div class="legend-line actual" style="background:var(--iaq-color)"></div> IAQ Thực tế</div>
         <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+5)</div>
+        <div class="legend-item"><div class="legend-line raw"></div> AI Dự đoán Raw</div>
       </div>
       <div class="chart-wrap main">
         <canvas id="iaqChart"></canvas>
@@ -327,8 +338,9 @@
     <div class="panel panel-stats">
       <div class="stats-section">
         <div class="stats-label">IAQ · Hiện tại</div>
-        <div class="stat-row"><span class="stat-key">Hiện tại:</span><span class="stat-num green" id="sIaqNow">—</span></div>
+        <div class="stat-row"><span class="stat-key">Thực tế:</span><span class="stat-num green"  id="sIaqNow">—</span></div>
         <div class="stat-row"><span class="stat-key">Dự đoán:</span><span class="stat-num yellow" id="sIaqPred">—</span></div>
+        <div class="stat-row"><span class="stat-key">Raw:</span><span class="stat-num orange" id="sIaqRaw">—</span></div>
         <div class="stat-row"><span class="stat-key">Min:</span><span class="stat-num dim" id="sIaqMin">—</span></div>
         <div class="stat-row"><span class="stat-key">Max:</span><span class="stat-num dim" id="sIaqMax">—</span></div>
         <div class="stat-row"><span class="stat-key">Mean:</span><span class="stat-num dim" id="sIaqMean">—</span></div>
@@ -358,12 +370,24 @@
       <div class="stats-section">
         <div class="stats-label">STATS (cửa sổ)</div>
         <table class="compare-table">
-          <tr><th>Metric</th><th>Thực</th><th>Dự đoán</th></tr>
+          <tr><th>Metric</th><th>Thực</th><th>Pred</th><th class="col-raw">Raw</th></tr>
           <tbody id="compareTable">
-            <tr><td style="color:var(--iaq-color)">IAQ</td><td id="ctIaqR">—</td><td id="ctIaqP">—</td></tr>
-            <tr><td style="color:var(--tvoc-color)">TVOC</td><td id="ctTvocR">—</td><td id="ctTvocP">—</td></tr>
-            <tr><td style="color:var(--eco2-color)">eCO₂</td><td id="ctEco2R">—</td><td id="ctEco2P">—</td></tr>
-            <tr><td style="color:var(--etoh-color)">EtOH</td><td id="ctEtohR">—</td><td id="ctEtohP">—</td></tr>
+            <tr>
+              <td style="color:var(--iaq-color)">IAQ</td>
+              <td id="ctIaqR">—</td><td id="ctIaqP">—</td><td id="ctIaqRaw" class="col-raw">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--tvoc-color)">TVOC</td>
+              <td id="ctTvocR">—</td><td id="ctTvocP">—</td><td id="ctTvocRaw" class="col-raw">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--eco2-color)">eCO₂</td>
+              <td id="ctEco2R">—</td><td id="ctEco2P">—</td><td id="ctEco2Raw" class="col-raw">—</td>
+            </tr>
+            <tr>
+              <td style="color:var(--etoh-color)">EtOH</td>
+              <td id="ctEtohR">—</td><td id="ctEtohP">—</td><td id="ctEtohRaw" class="col-raw">—</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -383,12 +407,18 @@
         <div class="panel-title">TVOC <span style="color:var(--text-muted)">(ppb)</span></div>
         <div class="panel-val tvoc" id="tvocCurrent">—</div>
       </div>
+      <div class="sub-legend">
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--tvoc-color)"></div>Thực tế</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw</div>
+      </div>
       <div class="chart-wrap sub">
         <canvas id="tvocChart"></canvas>
         <div class="overlay-msg" id="tvocOverlay">KHÔNG CÓ DỮ LIỆU</div>
       </div>
       <div style="display:flex;gap:16px;margin-top:8px">
-        <div style="font-size:10px;color:var(--text-dim)">Dự đoán: <span style="color:var(--yellow)" id="tvocPred">—</span></div>
+        <div style="font-size:10px;color:var(--text-dim)">Pred: <span style="color:var(--yellow)" id="tvocPred">—</span></div>
+        <div style="font-size:10px;color:var(--text-dim)">Raw: <span style="color:var(--orange)" id="tvocRaw">—</span></div>
         <div style="font-size:10px;color:var(--text-dim)">Δ <span id="tvocDelta" style="color:var(--text-dim)">—</span></div>
       </div>
     </div>
@@ -399,12 +429,18 @@
         <div class="panel-title">eCO₂ <span style="color:var(--text-muted)">(ppm)</span></div>
         <div class="panel-val eco2" id="eco2Current">—</div>
       </div>
+      <div class="sub-legend">
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--eco2-color)"></div>Thực tế</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw</div>
+      </div>
       <div class="chart-wrap sub">
         <canvas id="eco2Chart"></canvas>
         <div class="overlay-msg" id="eco2Overlay">KHÔNG CÓ DỮ LIỆU</div>
       </div>
       <div style="display:flex;gap:16px;margin-top:8px">
-        <div style="font-size:10px;color:var(--text-dim)">Dự đoán: <span style="color:var(--purple)" id="eco2Pred">—</span></div>
+        <div style="font-size:10px;color:var(--text-dim)">Pred: <span style="color:var(--purple)" id="eco2Pred">—</span></div>
+        <div style="font-size:10px;color:var(--text-dim)">Raw: <span style="color:var(--orange)" id="eco2Raw">—</span></div>
         <div style="font-size:10px;color:var(--text-dim)">Δ <span id="eco2Delta" style="color:var(--text-dim)">—</span></div>
       </div>
     </div>
@@ -415,12 +451,18 @@
         <div class="panel-title">EtOH <span style="color:var(--text-muted)">(ppm)</span></div>
         <div class="panel-val etoh" id="etohCurrent">—</div>
       </div>
+      <div class="sub-legend">
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--etoh-color)"></div>Thực tế</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw</div>
+      </div>
       <div class="chart-wrap sub">
         <canvas id="etohChart"></canvas>
         <div class="overlay-msg" id="etohOverlay">KHÔNG CÓ DỮ LIỆU</div>
       </div>
       <div style="display:flex;gap:16px;margin-top:8px">
-        <div style="font-size:10px;color:var(--text-dim)">Dự đoán: <span style="color:var(--etoh-color)" id="etohPred">—</span></div>
+        <div style="font-size:10px;color:var(--text-dim)">Pred: <span style="color:var(--etoh-color)" id="etohPred">—</span></div>
+        <div style="font-size:10px;color:var(--text-dim)">Raw: <span style="color:var(--orange)" id="etohRaw">—</span></div>
         <div style="font-size:10px;color:var(--text-dim)">Δ <span id="etohDelta" style="color:var(--text-dim)">—</span></div>
       </div>
     </div>
@@ -517,6 +559,7 @@ function startCountdown() {
 }
 
 // ─── LOAD DATA ───
+// Fetch tất cả 3 nguồn song song: sensors, predictions, prediction-raw
 async function loadAll() {
   if (!token) return;
   const date = document.getElementById('dateInput').value;
@@ -524,26 +567,26 @@ async function loadAll() {
 
   try {
     const headers = { 'Authorization': `Bearer ${token}` };
-    const [sRes, pRes] = await Promise.all([
-      fetch(`${API}/sensors/all?target_date=${date}`, { headers }),
-      fetch(`${API}/predictions/all?target_date=${date}`, { headers })
+    const [sRes, pRes, rRes] = await Promise.all([
+      fetch(`${API}/sensors/all?target_date=${date}`,          { headers }),
+      fetch(`${API}/predictions/all?target_date=${date}`,      { headers }),
+      fetch(`${API}/prediction-raw/all?target_date=${date}`,   { headers })
     ]);
 
-    // Handle 401 - token expired
-    if (sRes.status === 401 || pRes.status === 401) {
+    if (sRes.status === 401 || pRes.status === 401 || rRes.status === 401) {
       doLogout(); return;
     }
 
     if (!sRes.ok) throw new Error(`Sensors API: ${sRes.status}`);
     if (!pRes.ok) throw new Error(`Predictions API: ${pRes.status}`);
+    if (!rRes.ok) throw new Error(`Prediction-Raw API: ${rRes.status}`);
 
     const sensor = await sRes.json();
     const pred   = await pRes.json();
+    const raw    = await rRes.json();
 
-    // Hide any error
     document.getElementById('fetchErr').style.display = 'none';
-
-    updateAll(sensor, pred);
+    updateAll(sensor, pred, raw);
   } catch(e) {
     console.error('Fetch error:', e);
     const errEl = document.getElementById('fetchErr');
@@ -552,15 +595,16 @@ async function loadAll() {
 }
 
 // ─── UPDATE ALL ───
-function updateAll(sensor, pred) {
+function updateAll(sensor, pred, raw) {
   ['iaq','tvoc','eco2','etoh'].forEach(m => {
     const s = sensor[m] || [];
     const p = pred[m]   || [];
-    renderChart(m, s, p);
-    updateCurrentVal(m, s, p);
+    const r = raw[m]    || [];
+    renderChart(m, s, p, r);
+    updateCurrentVal(m, s, p, r);
   });
-  updateStats(sensor['iaq'] || [], pred['iaq'] || []);
-  updateCompareTable(sensor, pred);
+  updateStats(sensor['iaq'] || [], pred['iaq'] || [], raw['iaq'] || []);
+  updateCompareTable(sensor, pred, raw);
   updateQuality(sensor['iaq'] || []);
 }
 
@@ -572,22 +616,29 @@ const metaCfg = {
   etoh: { color: '#ff7043', label: 'EtOH' },
 };
 
-function renderChart(metric, sPoints, pPoints) {
-  const isMain = metric === 'iaq';
+function renderChart(metric, sPoints, pPoints, rPoints) {
+  const isMain  = metric === 'iaq';
   const overlay = document.getElementById(`${metric}Overlay`);
-  const noData  = sPoints.length === 0 && pPoints.length === 0;
+  const noData  = sPoints.length === 0 && pPoints.length === 0 && rPoints.length === 0;
   overlay.style.display = noData ? 'flex' : 'none';
 
-  // Build unified time axis
-  const allTimes = [...new Set([...sPoints.map(p=>p.time), ...pPoints.map(p=>p.time)])].sort();
-  const sVals = allTimes.map(t => { const f = sPoints.find(p=>p.time===t); return f != null ? f.value : null; });
-  const pVals = allTimes.map(t => { const f = pPoints.find(p=>p.time===t); return f != null ? f.value : null; });
+  // Unified time axis từ cả 3 nguồn
+  const allTimes = [...new Set([
+    ...sPoints.map(p => p.time),
+    ...pPoints.map(p => p.time),
+    ...rPoints.map(p => p.time)
+  ])].sort();
+
+  const sVals = allTimes.map(t => { const f = sPoints.find(p => p.time === t); return f != null ? f.value : null; });
+  const pVals = allTimes.map(t => { const f = pPoints.find(p => p.time === t); return f != null ? f.value : null; });
+  const rVals = allTimes.map(t => { const f = rPoints.find(p => p.time === t); return f != null ? f.value : null; });
 
   const ctx = document.getElementById(`${metric}Chart`).getContext('2d');
   if (charts[metric]) { charts[metric].destroy(); charts[metric] = null; }
   if (noData) return;
 
   const cfg = metaCfg[metric];
+
   const datasets = [
     {
       label: 'Thực tế',
@@ -606,6 +657,20 @@ function renderChart(metric, sPoints, pPoints) {
       data: pVals,
       borderColor: '#ff4444',
       borderDash: [5, 4],
+      backgroundColor: 'transparent',
+      borderWidth: isMain ? 1.5 : 1.2,
+      fill: false,
+      tension: 0.35,
+      pointRadius: 0,
+      pointHitRadius: 10,
+      spanGaps: true,
+    },
+    {
+      // Đường prediction raw — dotted, màu cam
+      label: 'Raw',
+      data: rVals,
+      borderColor: '#ffab40',
+      borderDash: [2, 4],
       backgroundColor: 'transparent',
       borderWidth: isMain ? 1.5 : 1.2,
       fill: false,
@@ -657,11 +722,12 @@ function renderChart(metric, sPoints, pPoints) {
 }
 
 // ─── CURRENT VALUES ───
-function updateCurrentVal(metric, sPoints, pPoints) {
+function updateCurrentVal(metric, sPoints, pPoints, rPoints) {
   const lastS = sPoints.length ? sPoints[sPoints.length-1].value : null;
   const lastP = pPoints.length ? pPoints[pPoints.length-1].value : null;
+  const lastR = rPoints.length ? rPoints[rPoints.length-1].value : null;
 
-  const fmt = v => v != null ? v.toFixed(1) : '—';
+  const fmt   = v  => v != null ? v.toFixed(1) : '—';
   const delta = (lastS != null && lastP != null) ? (lastP - lastS).toFixed(2) : '—';
   const deltaStr = delta !== '—' ? (delta > 0 ? '+' + delta : delta) : '—';
 
@@ -671,6 +737,7 @@ function updateCurrentVal(metric, sPoints, pPoints) {
     document.getElementById('iaqCurrent').textContent = fmt(lastS);
   } else {
     document.getElementById(`${metric}Pred`).textContent = fmt(lastP);
+    document.getElementById(`${metric}Raw`).textContent  = fmt(lastR);
     const dEl = document.getElementById(`${metric}Delta`);
     dEl.textContent = deltaStr;
     dEl.style.color = delta !== '—' && delta > 0 ? '#ff4444' : delta < 0 ? '#00e676' : '#506070';
@@ -678,65 +745,69 @@ function updateCurrentVal(metric, sPoints, pPoints) {
 }
 
 // ─── STATS ───
-function updateStats(sPoints, pPoints) {
+function updateStats(sPoints, pPoints, rPoints) {
   const lastS = sPoints.length ? sPoints[sPoints.length-1].value : null;
   const lastP = pPoints.length ? pPoints[pPoints.length-1].value : null;
+  const lastR = rPoints.length ? rPoints[rPoints.length-1].value : null;
 
   const fmt = v => v != null ? v.toFixed(1) : '—';
 
   document.getElementById('sIaqNow').textContent  = fmt(lastS);
   document.getElementById('sIaqPred').textContent = fmt(lastP);
+  document.getElementById('sIaqRaw').textContent  = fmt(lastR);
 
   if (sPoints.length > 0) {
     const vals = sPoints.map(p => p.value);
     const min  = Math.min(...vals).toFixed(1);
     const max  = Math.max(...vals).toFixed(1);
-    const mean = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
-    const std  = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/vals.length).toFixed(2);
+    const mean = (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1);
+    const std  = Math.sqrt(vals.reduce((a,b) => a + (b - mean) * (b - mean), 0) / vals.length).toFixed(2);
     document.getElementById('sIaqMin').textContent  = min;
     document.getElementById('sIaqMax').textContent  = max;
     document.getElementById('sIaqMean').textContent = mean;
     document.getElementById('sIaqStd').textContent  = std;
   }
 
-  // Eval metrics (paired points only)
-  const paired = sPoints.filter(s => {
-    return pPoints.find(p => p.time === s.time);
-  });
-
+  // Eval metrics — dùng cặp sensor vs prediction
+  const paired = sPoints.filter(s => pPoints.find(p => p.time === s.time));
   if (paired.length > 1) {
     const actuals = paired.map(s => s.value);
-    const preds   = paired.map(s => pPoints.find(p=>p.time===s.time).value);
+    const preds   = paired.map(s => pPoints.find(p => p.time === s.time).value);
     const n = actuals.length;
-    const mae  = actuals.reduce((a,_,i)=>a+Math.abs(actuals[i]-preds[i]),0)/n;
-    const rmse = Math.sqrt(actuals.reduce((a,_,i)=>a+(actuals[i]-preds[i])**2,0)/n);
-    const mape = actuals.reduce((a,_,i)=>a+Math.abs((actuals[i]-preds[i])/Math.max(actuals[i],0.01)),0)/n*100;
-    const meanA= actuals.reduce((a,b)=>a+b,0)/n;
-    const ss_res= actuals.reduce((a,_,i)=>a+(actuals[i]-preds[i])**2,0);
-    const ss_tot= actuals.reduce((a,_,i)=>a+(actuals[i]-meanA)**2,0);
-    const r2   = ss_tot ? 1 - ss_res/ss_tot : 0;
+    const mae  = actuals.reduce((a,_,i) => a + Math.abs(actuals[i] - preds[i]), 0) / n;
+    const rmse = Math.sqrt(actuals.reduce((a,_,i) => a + (actuals[i] - preds[i]) ** 2, 0) / n);
+    const mape = actuals.reduce((a,_,i) => a + Math.abs((actuals[i] - preds[i]) / Math.max(actuals[i], 0.01)), 0) / n * 100;
+    const meanA  = actuals.reduce((a,b) => a+b, 0) / n;
+    const ss_res = actuals.reduce((a,_,i) => a + (actuals[i] - preds[i]) ** 2, 0);
+    const ss_tot = actuals.reduce((a,_,i) => a + (actuals[i] - meanA) ** 2, 0);
+    const r2 = ss_tot ? 1 - ss_res / ss_tot : 0;
 
     document.getElementById('evalMAE').textContent  = mae.toFixed(3);
     document.getElementById('evalRMSE').textContent = rmse.toFixed(3);
     document.getElementById('evalMAPE').textContent = mape.toFixed(1) + '%';
     document.getElementById('evalR2').textContent   = r2.toFixed(3);
 
-    // Bars (MAE: lower=better, RMSE same, MAPE same, R2: higher=better)
-    document.getElementById('evalMAEBar').style.width  = Math.min(mae/5*100,100)+'%';
-    document.getElementById('evalRMSEBar').style.width = Math.min(rmse/5*100,100)+'%';
-    document.getElementById('evalMAPEBar').style.width = Math.min(mape,100)+'%';
-    document.getElementById('evalR2Bar').style.width   = Math.max(r2*100,0)+'%';
+    document.getElementById('evalMAEBar').style.width  = Math.min(mae / 5 * 100, 100) + '%';
+    document.getElementById('evalRMSEBar').style.width = Math.min(rmse / 5 * 100, 100) + '%';
+    document.getElementById('evalMAPEBar').style.width = Math.min(mape, 100) + '%';
+    document.getElementById('evalR2Bar').style.width   = Math.max(r2 * 100, 0) + '%';
   }
 }
 
 // ─── COMPARE TABLE ───
-function updateCompareTable(sensor, pred) {
-  const lastVal = (arr) => arr.length ? arr[arr.length-1].value.toFixed(2) : '—';
+function updateCompareTable(sensor, pred, raw) {
+  const lastVal = arr => arr.length ? arr[arr.length-1].value.toFixed(2) : '—';
   const metrics = ['iaq','tvoc','eco2','etoh'];
-  const ids = { iaq:['ctIaqR','ctIaqP'], tvoc:['ctTvocR','ctTvocP'], eco2:['ctEco2R','ctEco2P'], etoh:['ctEtohR','ctEtohP'] };
+  const ids = {
+    iaq:  ['ctIaqR',  'ctIaqP',  'ctIaqRaw'],
+    tvoc: ['ctTvocR', 'ctTvocP', 'ctTvocRaw'],
+    eco2: ['ctEco2R', 'ctEco2P', 'ctEco2Raw'],
+    etoh: ['ctEtohR', 'ctEtohP', 'ctEtohRaw']
+  };
   metrics.forEach(m => {
-    document.getElementById(ids[m][0]).textContent = lastVal(sensor[m]||[]);
-    document.getElementById(ids[m][1]).textContent = lastVal(pred[m]||[]);
+    document.getElementById(ids[m][0]).textContent = lastVal(sensor[m] || []);
+    document.getElementById(ids[m][1]).textContent = lastVal(pred[m]   || []);
+    document.getElementById(ids[m][2]).textContent = lastVal(raw[m]    || []);
   });
 }
 
