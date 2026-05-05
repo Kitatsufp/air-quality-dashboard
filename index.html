@@ -622,27 +622,20 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   const noData  = sPoints.length === 0 && pPoints.length === 0 && rPoints.length === 0;
   overlay.style.display = noData ? 'flex' : 'none';
 
-  // Unified time axis từ cả 3 nguồn
-  const allTimes = [...new Set([
-    ...sPoints.map(p => p.time),
-    ...pPoints.map(p => p.time),
-    ...rPoints.map(p => p.time)
-  ])].sort();
-
-  const sVals = allTimes.map(t => { const f = sPoints.find(p => p.time === t); return f != null ? f.value : null; });
-  const pVals = allTimes.map(t => { const f = pPoints.find(p => p.time === t); return f != null ? f.value : null; });
-  const rVals = allTimes.map(t => { const f = rPoints.find(p => p.time === t); return f != null ? f.value : null; });
-
   const ctx = document.getElementById(`${metric}Chart`).getContext('2d');
   if (charts[metric]) { charts[metric].destroy(); charts[metric] = null; }
   if (noData) return;
 
   const cfg = metaCfg[metric];
 
+  // Mỗi nguồn dữ liệu có timestamp RIÊNG — không join theo time string
+  // Dùng {x: timeLabel, y: value} để Chart.js vẽ độc lập trên cùng trục thời gian
+  const toXY = pts => pts.map(p => ({ x: p.time, y: p.value }));
+
   const datasets = [
     {
       label: 'Thực tế',
-      data: sVals,
+      data: toXY(sPoints),
       borderColor: cfg.color,
       backgroundColor: cfg.color + '18',
       borderWidth: isMain ? 2 : 1.5,
@@ -654,7 +647,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
     },
     {
       label: 'Dự đoán',
-      data: pVals,
+      data: toXY(pPoints),
       borderColor: '#ff4444',
       borderDash: [5, 4],
       backgroundColor: 'transparent',
@@ -666,9 +659,8 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       spanGaps: true,
     },
     {
-      // Đường prediction raw — dotted, màu cam
       label: 'Raw',
-      data: rVals,
+      data: toXY(rPoints),
       borderColor: '#ffab40',
       borderDash: [2, 4],
       backgroundColor: 'transparent',
@@ -683,12 +675,12 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
 
   charts[metric] = new Chart(ctx, {
     type: 'line',
-    data: { labels: allTimes, datasets },
+    data: { datasets },
     options: {
       animation: false,
       responsive: true,
       maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
+      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -703,6 +695,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       },
       scales: {
         x: {
+          type: 'category',   // dùng category để mỗi dataset dùng label của chính nó
           display: false,
           grid: { color: '#1e2630' }
         },
