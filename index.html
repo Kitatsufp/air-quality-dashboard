@@ -517,8 +517,8 @@ let reloadTimer = null, countdown = 3;
 async function doClearAll() {
   document.getElementById('confirmOverlay').classList.remove('show');
   try {
-    const r = await fetch(`${API}/admin/clear-all`, {
-      method: 'DELETE',
+    const r = await fetch(`${API}/admin/clear-all-data`, {
+      method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (r.status === 401) { doLogout(); return; }
@@ -700,14 +700,37 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
 
   const cfg = metaCfg[metric];
 
-  // Mỗi nguồn dữ liệu có timestamp RIÊNG — không join theo time string
-  // Dùng {x: timeLabel, y: value} để Chart.js vẽ độc lập trên cùng trục thời gian
-  const toXY = pts => pts.map(p => ({ x: p.time, y: p.value }));
+  // ✅ TẠO TIMELINE CHUNG TỪ CẢ 3 SOURCE
+  const allTimes = new Set([
+    ...sPoints.map(p => p.time),
+    ...pPoints.map(p => p.time),
+    ...rPoints.map(p => p.time)
+  ]);
+  const commonTimeline = Array.from(allTimes).sort();
+
+  // ✅ TẠO MAP CHO PHÉP LOOKUP NHANH
+  const sensorMap = new Map(sPoints.map(p => [p.time, p.value]));
+  const predMap   = new Map(pPoints.map(p => [p.time, p.value]));
+  const rawMap    = new Map(rPoints.map(p => [p.time, p.value]));
+
+  // ✅ JOIN DỮ LIỆU THEO TIMELINE CHUNG
+  const sensorData = commonTimeline.map(t => ({
+    x: t,
+    y: sensorMap.get(t) ?? null
+  }));
+  const predData = commonTimeline.map(t => ({
+    x: t,
+    y: predMap.get(t) ?? null
+  }));
+  const rawData = commonTimeline.map(t => ({
+    x: t,
+    y: rawMap.get(t) ?? null
+  }));
 
   const datasets = [
     {
       label: 'Thực tế',
-      data: toXY(sPoints),
+      data: sensorData,
       borderColor: cfg.color,
       backgroundColor: cfg.color + '18',
       borderWidth: isMain ? 2 : 1.5,
@@ -719,7 +742,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
     },
     {
       label: 'Dự đoán',
-      data: toXY(pPoints),
+      data: predData,
       borderColor: '#ff4444',
       borderDash: [5, 4],
       backgroundColor: 'transparent',
@@ -732,7 +755,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
     },
     {
       label: 'Raw',
-      data: toXY(rPoints),
+      data: rawData,
       borderColor: '#ffab40',
       borderDash: [2, 4],
       backgroundColor: 'transparent',
@@ -747,7 +770,10 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
 
   charts[metric] = new Chart(ctx, {
     type: 'line',
-    data: { datasets },
+    data: { 
+      labels: commonTimeline,  // ✅ DÙNG TIMELINE CHUNG
+      datasets 
+    },
     options: {
       animation: false,
       responsive: true,
@@ -767,7 +793,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       },
       scales: {
         x: {
-          type: 'category',   // dùng category để mỗi dataset dùng label của chính nó
+          type: 'category',
           display: false,
           grid: { color: '#1e2630' }
         },
