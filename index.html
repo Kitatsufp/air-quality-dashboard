@@ -115,6 +115,30 @@
     padding: 5px 12px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
   }
   .logout-btn:hover { border-color: var(--red); color: var(--red); }
+  .clear-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 5px 12px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); background: rgba(255,68,68,0.08); }
+  #confirmOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center; z-index: 200;
+  }
+  #confirmOverlay.show { display: flex; }
+  .confirm-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-top: 2px solid var(--red);
+    padding: 28px 32px; width: 320px; text-align: center;
+  }
+  .confirm-box h3 { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--red); margin-bottom: 10px; }
+  .confirm-box p  { font-size: 11px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.6; }
+  .confirm-btns   { display: flex; gap: 10px; }
+  .confirm-btns button { flex: 1; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer; border: 1px solid; letter-spacing: 1px; }
+  .btn-cancel  { background: transparent; border-color: var(--border); color: var(--text-dim); }
+  .btn-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-confirm { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
+  .btn-confirm:hover { opacity: 0.85; }
   .reload-badge {
     font-size: 9px; color: var(--text-dim); letter-spacing: 1px;
   }
@@ -238,9 +262,11 @@
     font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
     border: 1px solid; margin-top: 8px;
   }
-  .quality-badge.good     { color: var(--green);  border-color: var(--green);  background: var(--green-dim); }
-  .quality-badge.moderate { color: var(--yellow); border-color: var(--yellow); background: rgba(255,215,64,.1); }
-  .quality-badge.poor     { color: var(--red);    border-color: var(--red);    background: rgba(255,68,68,.1); }
+  .quality-badge.good      { color: var(--green);  border-color: var(--green);  background: var(--green-dim); }
+  .quality-badge.very-good { color: #00ffaa;        border-color: #00ffaa;       background: rgba(0,255,170,.1); }
+  .quality-badge.moderate  { color: var(--yellow);  border-color: var(--yellow); background: rgba(255,215,64,.1); }
+  .quality-badge.poor      { color: var(--orange);  border-color: var(--orange); background: rgba(255,171,64,.1); }
+  .quality-badge.very-poor { color: var(--red);     border-color: var(--red);    background: rgba(255,68,68,.1); }
 
   /* ── COMPARISON TABLE ── */
   .compare-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
@@ -297,6 +323,18 @@
   </div>
 </div>
 
+<!-- CONFIRM DIALOG -->
+<div id="confirmOverlay">
+  <div class="confirm-box">
+    <h3>⚠ XÓA TOÀN BỘ DỮ LIỆU</h3>
+    <p>Thao tác này sẽ xóa tất cả sensor data, prediction data và prediction raw data của bạn.<br>Không thể hoàn tác.</p>
+    <div class="confirm-btns">
+      <button class="btn-cancel" onclick="document.getElementById('confirmOverlay').classList.remove('show')">Hủy</button>
+      <button class="btn-confirm" onclick="doClearAll()">Xóa hết</button>
+    </div>
+  </div>
+</div>
+
 <!-- DASHBOARD -->
 <div id="dashboard">
   <div class="topbar">
@@ -309,6 +347,7 @@
       <span class="reload-badge">auto-reload <span id="countdownDisplay">3s</span></span>
       <input type="date" id="dateInput">
       <div id="clockDisplay">--:--:--</div>
+      <button class="clear-btn" onclick="document.getElementById('confirmOverlay').classList.add('show')">Xóa DB</button>
       <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
     </div>
   </div>
@@ -475,7 +514,25 @@ let token = null, user = null;
 let charts = {};
 let reloadTimer = null, countdown = 3;
 
-// ─── CLOCK ───
+async function doClearAll() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  try {
+    const r = await fetch(`${API}/admin/clear-all`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (r.status === 401) { doLogout(); return; }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    // Reload chart ngay sau khi xóa
+    loadAll();
+  } catch(e) {
+    const errEl = document.getElementById('fetchErr');
+    errEl.textContent = '⚠ Xóa thất bại: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+
 setInterval(() => {
   document.getElementById('clockDisplay').textContent =
     new Date().toLocaleTimeString('vi-VN', {hour12: false});
@@ -625,10 +682,10 @@ function updateAll(sensor, pred, raw) {
 
 // ─── CHART CONFIG ───
 const metaCfg = {
-  iaq:  { color: '#40c4ff', label: 'IAQ' },
-  tvoc: { color: '#ffd740', label: 'TVOC' },
-  eco2: { color: '#b388ff', label: 'eCO₂' },
-  etoh: { color: '#ff7043', label: 'EtOH' },
+  iaq:  { color: '#40c4ff', label: 'IAQ',  yMin: 0, yMax: 5   },
+  tvoc: { color: '#ffd740', label: 'TVOC', yMin: 0, yMax: 50  },
+  eco2: { color: '#b388ff', label: 'eCO₂', yMin: 0, yMax: 800 },
+  etoh: { color: '#ff7043', label: 'EtOH', yMin: 0, yMax: 3   },
 };
 
 function renderChart(metric, sPoints, pPoints, rPoints) {
@@ -715,6 +772,8 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
           grid: { color: '#1e2630' }
         },
         y: {
+          min: cfg.yMin,
+          max: cfg.yMax,
           beginAtZero: false,
           grid: { color: '#1a2230', lineWidth: 0.5 },
           ticks: {
@@ -820,25 +879,24 @@ function updateCompareTable(sensor, pred, raw) {
 }
 
 // ─── QUALITY ───
+// IAQ: <=1.9 very good | 2-2.9 good | 3-4 medium | 4.1-4.9 poor | >=5 very poor
+function getIaqLevel(val) {
+  if (val <= 1.9) return { cls: 'very-good', label: 'RẤT TỐT',   desc: 'Không khí rất trong lành. Hoàn toàn an toàn cho mọi hoạt động.' };
+  if (val <= 2.9) return { cls: 'good',      label: 'TỐT',        desc: 'Không khí tốt. Thích hợp cho mọi hoạt động ngoài trời.' };
+  if (val <= 4.0) return { cls: 'moderate',  label: 'TRUNG BÌNH', desc: 'Chấp nhận được. Nhóm nhạy cảm nên hạn chế hoạt động lâu ngoài trời.' };
+  if (val <= 4.9) return { cls: 'poor',      label: 'KÉM',        desc: 'Không khí kém. Hạn chế ra ngoài, đặc biệt trẻ em và người già.' };
+  return           { cls: 'very-poor',  label: 'RẤT KÉM',   desc: 'Không khí ô nhiễm nặng. Ở trong nhà, đóng cửa sổ, dùng máy lọc không khí.' };
+}
+
 function updateQuality(sPoints) {
   const badge = document.getElementById('qualityBadge');
   const desc  = document.getElementById('qualityDesc');
   if (!sPoints.length) return;
   const last = sPoints[sPoints.length-1].value;
-
-  if (last <= 50) {
-    badge.className = 'quality-badge good';
-    badge.textContent = 'TỐT';
-    desc.textContent = 'Không khí trong lành. Thích hợp cho mọi hoạt động ngoài trời.';
-  } else if (last <= 100) {
-    badge.className = 'quality-badge moderate';
-    badge.textContent = 'TRUNG BÌNH';
-    desc.textContent = 'Chấp nhận được. Nhóm nhạy cảm nên hạn chế hoạt động ngoài trời lâu.';
-  } else {
-    badge.className = 'quality-badge poor';
-    badge.textContent = 'KÉM';
-    desc.textContent = 'Không khí ô nhiễm. Hạn chế ra ngoài, đóng cửa sổ, dùng máy lọc không khí.';
-  }
+  const lvl  = getIaqLevel(last);
+  badge.className   = 'quality-badge ' + lvl.cls;
+  badge.textContent = lvl.label;
+  desc.textContent  = lvl.desc;
 }
 </script>
 </body>
