@@ -519,6 +519,15 @@ function doLogout() {
 }
 
 // ─── RESTORE SESSION ───
+// Lấy ngày hôm nay theo giờ local (tránh UTC offset làm lệch ngày)
+function todayLocal() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 window.addEventListener('load', () => {
   const t = localStorage.getItem('aq_token');
   const u = localStorage.getItem('aq_user');
@@ -526,7 +535,7 @@ window.addEventListener('load', () => {
     token = t; user = JSON.parse(u);
     startDashboard();
   }
-  document.getElementById('dateInput').valueAsDate = new Date();
+  document.getElementById('dateInput').value = todayLocal();
 });
 
 document.getElementById('dateInput').addEventListener('change', () => {
@@ -549,6 +558,12 @@ function startCountdown() {
   countdown = 3;
   document.getElementById('countdownDisplay').textContent = countdown + 's';
   reloadTimer = setInterval(() => {
+    // Mỗi tick kiểm tra xem ngày có đổi chưa (qua nửa đêm)
+    const today = todayLocal();
+    const dateInput = document.getElementById('dateInput');
+    if (dateInput.value !== today) {
+      dateInput.value = today;
+    }
     countdown--;
     document.getElementById('countdownDisplay').textContent = countdown + 's';
     if (countdown <= 0) {
