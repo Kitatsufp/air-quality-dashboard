@@ -523,7 +523,7 @@ async function loadAll() {
   if (!date) return;
 
   try {
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const headers = { 'Authorization': `Bearer ${token}` };
     const [sRes, pRes] = await Promise.all([
       fetch(`${API}/sensors/all?target_date=${date}`, { headers }),
       fetch(`${API}/predictions/all?target_date=${date}`, { headers })
