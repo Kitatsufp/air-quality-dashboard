@@ -188,7 +188,7 @@
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-dim); }
   .legend-line { width: 24px; height: 2px; }
   .legend-line.actual { background: var(--iaq-color); }
-  .legend-line.pred { background: var(--red); border-top: 2px dashed var(--red); background: none; }
+  .legend-line.pred { border-top: 2px dashed var(--red); background: none; }
 
   /* ── CHART WRAPPER ── */
   .chart-wrap { position: relative; }
@@ -295,6 +295,7 @@
       <div class="topbar-title">⬡ IAQ LIVE MONITOR · <span>AI Prediction Dashboard</span></div>
     </div>
     <div class="topbar-right">
+      <div id="fetchErr" style="font-size:10px;color:#ff4444;display:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
       <span class="reload-badge">auto-reload <span id="countdownDisplay">3s</span></span>
       <input type="date" id="dateInput">
       <div id="clockDisplay">--:--:--</div>
@@ -314,7 +315,6 @@
       </div>
       <div class="legend">
         <div class="legend-item"><div class="legend-line actual" style="background:var(--iaq-color)"></div> IAQ Thực tế</div>
-        <div class="legend-item"><div class="legend-line actual" style="background:rgba(100,160,220,0.4);border-top:2px dotted #6aa0dc"></div> IAQ Thô</div>
         <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+5)</div>
       </div>
       <div class="chart-wrap main">
@@ -520,18 +520,34 @@ function startCountdown() {
 async function loadAll() {
   if (!token) return;
   const date = document.getElementById('dateInput').value;
+  if (!date) return;
 
   try {
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
     const [sRes, pRes] = await Promise.all([
-      fetch(`${API}/sensors/all?target_date=${date}`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`${API}/predictions/all?target_date=${date}`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API}/sensors/all?target_date=${date}`, { headers }),
+      fetch(`${API}/predictions/all?target_date=${date}`, { headers })
     ]);
-    if (!sRes.ok || !pRes.ok) throw new Error();
+
+    // Handle 401 - token expired
+    if (sRes.status === 401 || pRes.status === 401) {
+      doLogout(); return;
+    }
+
+    if (!sRes.ok) throw new Error(`Sensors API: ${sRes.status}`);
+    if (!pRes.ok) throw new Error(`Predictions API: ${pRes.status}`);
+
     const sensor = await sRes.json();
     const pred   = await pRes.json();
+
+    // Hide any error
+    document.getElementById('fetchErr').style.display = 'none';
+
     updateAll(sensor, pred);
   } catch(e) {
-    console.error('Fetch error', e);
+    console.error('Fetch error:', e);
+    const errEl = document.getElementById('fetchErr');
+    if (errEl) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
   }
 }
 
@@ -558,16 +574,18 @@ const metaCfg = {
 
 function renderChart(metric, sPoints, pPoints) {
   const isMain = metric === 'iaq';
-  const allTimes = [...new Set([...sPoints.map(p=>p.time), ...pPoints.map(p=>p.time)])].sort();
-  const sVals = allTimes.map(t => { const f = sPoints.find(p=>p.time===t); return f ? f.value : null; });
-  const pVals = allTimes.map(t => { const f = pPoints.find(p=>p.time===t); return f ? f.value : null; });
-
   const overlay = document.getElementById(`${metric}Overlay`);
   const noData  = sPoints.length === 0 && pPoints.length === 0;
   overlay.style.display = noData ? 'flex' : 'none';
 
+  // Build unified time axis
+  const allTimes = [...new Set([...sPoints.map(p=>p.time), ...pPoints.map(p=>p.time)])].sort();
+  const sVals = allTimes.map(t => { const f = sPoints.find(p=>p.time===t); return f != null ? f.value : null; });
+  const pVals = allTimes.map(t => { const f = pPoints.find(p=>p.time===t); return f != null ? f.value : null; });
+
   const ctx = document.getElementById(`${metric}Chart`).getContext('2d');
-  if (charts[metric]) charts[metric].destroy();
+  if (charts[metric]) { charts[metric].destroy(); charts[metric] = null; }
+  if (noData) return;
 
   const cfg = metaCfg[metric];
   const datasets = [
@@ -580,7 +598,8 @@ function renderChart(metric, sPoints, pPoints) {
       fill: isMain,
       tension: 0.35,
       pointRadius: 0,
-      pointHitRadius: 8,
+      pointHitRadius: 10,
+      spanGaps: true,
     },
     {
       label: 'Dự đoán',
@@ -588,11 +607,12 @@ function renderChart(metric, sPoints, pPoints) {
       borderColor: '#ff4444',
       borderDash: [5, 4],
       backgroundColor: 'transparent',
-      borderWidth: isMain ? 1.5 : 1,
+      borderWidth: isMain ? 1.5 : 1.2,
       fill: false,
       tension: 0.35,
       pointRadius: 0,
-      pointHitRadius: 8,
+      pointHitRadius: 10,
+      spanGaps: true,
     }
   ];
 
