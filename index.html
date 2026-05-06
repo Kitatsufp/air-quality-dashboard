@@ -795,7 +795,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   charts[metric] = new Chart(ctx, {
     type: 'line',
     data: { datasets },
-    plugins: [nowLinePlugin],
+    plugins: [],
     options: {
       layout: { padding: { top: 15 } },
       animation: false,
