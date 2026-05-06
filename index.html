@@ -328,7 +328,7 @@
       <div class="legend">
         <div class="legend-item"><div class="legend-line actual" style="background:var(--iaq-color)"></div> IAQ Thực tế</div>
         <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+5)</div>
-        <div class="legend-item"><div class="legend-line raw"></div> AI Dự đoán Raw</div>
+        <div class="legend-item"><div class="legend-line raw"></div> Raw</div>
       </div>
       <div class="chart-wrap main">
         <canvas id="iaqChart"></canvas>
@@ -730,8 +730,21 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       scales: {
         x: {
           type: 'category',
-          display: false,
-          grid: { color: '#1e2630' }
+          display: true,
+          grid: { color: '#1e2630' },
+          ticks: {
+            color: '#506070',
+            font: { family: 'JetBrains Mono', size: 9 },
+            maxRotation: 45,
+            minRotation: 0,
+            callback: function(value, index) {
+              // Hiển thị mỗi 4 giây
+              if (index % 4 === 0) {
+                return value;
+              }
+              return '';
+            }
+          }
         },
         y: {
           min: cfg.yMin,
