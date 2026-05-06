@@ -484,7 +484,7 @@ let lastData = { sensor: {}, pred: {}, raw: {} };
 let currentTime = Date.now();
 
 // ✅ KEY CONSTANT: số giây dịch chuyển pred/raw về phía trước (tương lai)
-const PRED_SHIFT_SECONDS = 20;
+const PRED_SHIFT_SECONDS = 60;
 
 setInterval(() => {
   currentTime = Date.now();
