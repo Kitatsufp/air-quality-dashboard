@@ -617,7 +617,6 @@ function updateAll(sensor, pred, raw) {
 }
 
 // ─── FORMAT TIME LABEL ───
-// Parse timestamp từ API → "7h05p00s"
 function fmtTimeLabel(timeStr) {
   try {
     const d = new Date(timeStr);
@@ -629,6 +628,19 @@ function fmtTimeLabel(timeStr) {
   } catch(e) {
     return '';
   }
+}
+
+// ─── PICK TICK INTERVAL (giây) THEO RANGE DỮ LIỆU ───
+function pickTickIntervalSec(rangeSeconds) {
+  if (rangeSeconds <= 30)    return 5;
+  if (rangeSeconds <= 120)   return 10;
+  if (rangeSeconds <= 300)   return 30;
+  if (rangeSeconds <= 600)   return 60;
+  if (rangeSeconds <= 1800)  return 120;
+  if (rangeSeconds <= 3600)  return 300;
+  if (rangeSeconds <= 7200)  return 600;
+  if (rangeSeconds <= 21600) return 1800;
+  return 3600;
 }
 
 // ─── CHART CONFIG ───
@@ -665,22 +677,22 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   const rawMap    = new Map(rPoints.map(p => [p.time, p.value]));
 
   // JOIN DỮ LIỆU THEO TIMELINE CHUNG
-  const sensorData = commonTimeline.map(t => ({
-    x: t,
-    y: sensorMap.get(t) ?? null
-  }));
-  const predData = commonTimeline.map(t => ({
-    x: t,
-    y: predMap.get(t) ?? null
-  }));
-  const rawData = commonTimeline.map(t => ({
-    x: t,
-    y: rawMap.get(t) ?? null
-  }));
+  const sensorData = commonTimeline.map(t => ({ x: t, y: sensorMap.get(t) ?? null }));
+  const predData   = commonTimeline.map(t => ({ x: t, y: predMap.get(t)   ?? null }));
+  const rawData    = commonTimeline.map(t => ({ x: t, y: rawMap.get(t)    ?? null }));
 
-  // Tính bước nhảy label: hiển thị ~8-10 nhãn trên trục X
-  const totalPoints = commonTimeline.length;
-  const tickStep = Math.max(1, Math.round(totalPoints / 8));
+  // ── TÍNH TICK INTERVAL THEO THỜI GIAN THỰC ──
+  const firstMs      = new Date(commonTimeline[0]).getTime();
+  const lastMs       = new Date(commonTimeline[commonTimeline.length - 1]).getTime();
+  const rangeSeconds = (lastMs - firstMs) / 1000;
+
+  // Khoảng cách giữa mỗi điểm (giây)
+  const pointDurSec = commonTimeline.length > 1
+    ? rangeSeconds / (commonTimeline.length - 1)
+    : 1;
+
+  // Chọn interval label phù hợp với range
+  const tickIntervalSec = pickTickIntervalSec(rangeSeconds);
 
   const datasets = [
     {
@@ -746,7 +758,6 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
           bodyFont: { family: 'JetBrains Mono', size: 11 },
           callbacks: {
             title: function(items) {
-              // Tooltip title cũng hiện giờ thực
               return fmtTimeLabel(items[0].label);
             }
           }
@@ -762,12 +773,23 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
             font: { family: 'JetBrains Mono', size: 9 },
             maxRotation: 45,
             minRotation: 0,
-            autoSkip: false,       // tắt auto-skip, dùng callback tự kiểm soát
-            maxTicksLimit: 999,    // không giới hạn, callback tự lọc
+            autoSkip: false,
+            maxTicksLimit: 999,
             callback: function(value, index) {
-              // Hiện mỗi tickStep điểm để label không sát nhau
-              if (index % tickStep !== 0) return '';
-              return fmtTimeLabel(value);
+              // Tính số giây từ điểm đầu tiên đến điểm này
+              const tMs  = new Date(commonTimeline[index]).getTime();
+              const diffSec = (tMs - firstMs) / 1000;
+
+              // Hiện label nếu diffSec là bội của tickIntervalSec
+              // Dung sai = nửa khoảng cách giữa 2 điểm
+              const tolerance = pointDurSec * 0.6;
+              const remainder = diffSec % tickIntervalSec;
+              const isOnTick  = remainder < tolerance || (tickIntervalSec - remainder) < tolerance;
+
+              if (index === 0 || isOnTick) {
+                return fmtTimeLabel(commonTimeline[index]);
+              }
+              return '';
             }
           }
         },
