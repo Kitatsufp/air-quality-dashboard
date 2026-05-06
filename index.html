@@ -7,974 +7,107 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0c0f;
-    --bg2: #111418;
-    --bg3: #181d24;
-    --border: #1e2630;
-    --text: #c8d8e8;
-    --text-dim: #506070;
-    --text-muted: #2a3a4a;
-    --green: #00e676;
-    --green-dim: rgba(0,230,118,0.15);
-    --red: #ff4444;
-    --yellow: #ffd740;
-    --blue: #40c4ff;
-    --purple: #b388ff;
-    --accent: #00e676;
-    --iaq-color: #40c4ff;
-    --tvoc-color: #ffd740;
-    --eco2-color: #b388ff;
-    --etoh-color: #ff7043;
-    --pred-color: rgba(255,68,68,0.8);
-    --raw-color: #ffab40;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'JetBrains Mono', monospace;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── LOGIN ── */
-  #loginWrap {
-    position: fixed; inset: 0;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 999;
-  }
-  #loginWrap.hidden { display: none; }
-
-  .login-box {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-top: 2px solid var(--green);
-    padding: 40px 36px;
-    width: 360px;
-  }
-  .login-box h1 {
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    letter-spacing: 3px;
-    color: var(--green);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .login-box p { color: var(--text-dim); font-size: 11px; margin-bottom: 32px; }
-  .field { margin-bottom: 18px; }
-  .field label { display: block; font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
-  .field input {
-    width: 100%; padding: 10px 14px;
-    background: var(--bg3); border: 1px solid var(--border);
-    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 13px;
-    outline: none; transition: border-color 0.2s;
-  }
-  .field input:focus { border-color: var(--green); }
-  .login-btn {
-    width: 100%; padding: 12px;
-    background: var(--green); color: #000;
-    font-family: 'Space Mono', monospace; font-size: 12px;
-    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-    border: none; cursor: pointer; transition: opacity 0.2s;
-    margin-top: 8px;
-  }
-  .login-btn:hover { opacity: 0.85; }
-  .login-err { color: var(--red); font-size: 11px; margin-top: 12px; display: none; }
-
-  /* ── DASHBOARD ── */
-  #dashboard { display: none; min-height: 100vh; }
-  #dashboard.active { display: block; }
-
-  /* ── TOPBAR ── */
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 20px; height: 48px;
-    background: var(--bg2); border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 100;
-  }
-  .topbar-left { display: flex; align-items: center; gap: 16px; }
-  .live-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,0.6)} 50%{opacity:.8;box-shadow:0 0 0 6px rgba(0,230,118,0)} }
-  .topbar-title { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--text); }
-  .topbar-title span { color: var(--green); }
-  .topbar-right { display: flex; align-items: center; gap: 16px; }
-  .topbar-right input[type=date] {
-    background: var(--bg3); border: 1px solid var(--border);
-    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    padding: 5px 10px; outline: none; cursor: pointer;
-  }
-  #clockDisplay { font-size: 12px; color: var(--green); letter-spacing: 2px; min-width: 70px; text-align: right; }
-  .logout-btn {
-    background: transparent; border: 1px solid var(--border);
-    color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 10px;
-    padding: 5px 12px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
-  }
-  .logout-btn:hover { border-color: var(--red); color: var(--red); }
-  .reload-badge {
-    font-size: 9px; color: var(--text-dim); letter-spacing: 1px;
-  }
-  .reload-badge span { color: var(--green); }
-
-  /* ── LAYOUT ── */
-  .layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 280px;
-    grid-template-rows: auto auto;
-    gap: 1px;
-    background: var(--border);
-    min-height: calc(100vh - 48px);
-  }
-
-  .panel {
-    background: var(--bg2);
-    padding: 16px;
-    position: relative;
-  }
-
-  .panel-iaq-main {
-    grid-column: 1 / 4;
-    grid-row: 1;
-    padding: 20px 24px;
-  }
-
-  .panel-stats {
-    grid-column: 4;
-    grid-row: 1 / 3;
-    border-left: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    gap: 0;
-  }
-
-  .panel-tvoc { grid-column: 1; grid-row: 2; }
-  .panel-eco2 { grid-column: 2; grid-row: 2; }
-  .panel-etoh { grid-column: 3; grid-row: 2; }
-
-  /* ── PANEL HEADER ── */
-  .panel-header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .panel-title {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
-    color: var(--text-dim);
-  }
-  .panel-val {
-    font-family: 'Space Mono', monospace;
-    font-size: 28px; font-weight: 700;
-    line-height: 1;
-  }
-  .panel-val.iaq  { color: var(--iaq-color); }
-  .panel-val.tvoc { color: var(--tvoc-color); }
-  .panel-val.eco2 { color: var(--eco2-color); }
-  .panel-val.etoh { color: var(--etoh-color); }
-
-  .panel-meta {
-    font-size: 10px; color: var(--text-dim); margin-bottom: 12px; letter-spacing: 1px;
-  }
-  .panel-meta span { color: var(--green); }
-
-  /* ── LEGEND ── */
-  .legend {
-    display: flex; gap: 20px; margin-bottom: 10px; flex-wrap: wrap;
-  }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-dim); }
-  .legend-line { width: 24px; height: 2px; }
-  .legend-line.actual  { background: var(--iaq-color); }
-  .legend-line.pred    { border-top: 2px dashed var(--red); background: none; }
-  .legend-line.raw     { border-top: 2px dotted var(--raw-color); background: none; }
-  .legend-line.future  { background: var(--orange); }
-
-  /* ── CHART WRAPPER ── */
-  .chart-wrap { position: relative; }
-  .chart-wrap.main { height: 200px; }
-  .chart-wrap.sub  { height: 140px; }
-
-  /* ── SUB LEGEND ── */
-  .sub-legend {
-    display: flex; gap: 14px; margin-bottom: 8px;
-  }
-  .sub-legend-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--text-dim); }
-  .sub-legend-dot { width: 20px; height: 1.5px; }
-
-  /* ── STATS PANEL ── */
-  .stats-section {
-    border-bottom: 1px solid var(--border);
-    padding: 16px;
-  }
-  .stats-section:last-child { border-bottom: none; }
-  .stats-label {
-    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
-    color: var(--text-muted); margin-bottom: 12px;
-  }
-  .stat-row {
-    display: flex; justify-content: space-between; align-items: baseline;
-    margin-bottom: 8px;
-  }
-  .stat-key { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
-  .stat-num { font-family: 'Space Mono', monospace; font-size: 14px; }
-  .stat-num.green  { color: var(--green); }
-  .stat-num.yellow { color: var(--yellow); }
-  .stat-num.red    { color: var(--red); }
-  .stat-num.blue   { color: var(--blue); }
-  .stat-num.orange { color: var(--orange); }
-  .stat-num.dim    { color: var(--text-dim); }
-
-  /* ── EVAL SECTION ── */
-  .eval-bar-wrap { margin-bottom: 10px; }
-  .eval-label-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
-  .eval-label { color: var(--text-dim); }
-  .eval-val { color: var(--text); }
-  .eval-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
-  .eval-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
-
-  /* ── QUALITY INDICATOR ── */
-  .quality-badge {
-    display: inline-block; padding: 3px 10px;
-    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-    border: 1px solid; margin-top: 8px;
-  }
-  .quality-badge.good      { color: var(--green);  border-color: var(--green);  background: var(--green-dim); }
-  .quality-badge.very-good { color: #00ffaa;        border-color: #00ffaa;       background: rgba(0,255,170,.1); }
-  .quality-badge.moderate  { color: var(--yellow);  border-color: var(--yellow); background: rgba(255,215,64,.1); }
-  .quality-badge.poor      { color: var(--orange);  border-color: var(--orange); background: rgba(255,171,64,.1); }
-  .quality-badge.very-poor { color: var(--red);     border-color: var(--red);    background: rgba(255,68,68,.1); }
-
-  /* ── COMPARISON TABLE ── */
-  .compare-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  .compare-table th {
-    font-size: 9px; letter-spacing: 2px; color: var(--text-muted);
-    text-transform: uppercase; text-align: left; padding: 4px 0; border-bottom: 1px solid var(--border);
-  }
-  .compare-table td { font-size: 11px; padding: 5px 0; border-bottom: 1px solid var(--text-muted); }
-  .compare-table td:last-child { text-align: right; }
-  .compare-table td:nth-child(2),
-  .compare-table td:nth-child(3) { text-align: right; }
-  .col-raw { color: var(--orange); font-size: 10px; }
-
-  /* ── NO DATA / LOADING ── */
-  .overlay-msg {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(10,12,15,.4);
-    font-size: 11px; color: var(--text-dim); letter-spacing: 2px;
-    display: none;
-  }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 1100px) {
-    .layout {
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto;
-    }
-    .panel-iaq-main { grid-column: 1 / 3; grid-row: 1; }
-    .panel-stats { grid-column: 1 / 3; grid-row: 2; display: grid; grid-template-columns: repeat(3,1fr); }
-    .panel-tvoc { grid-column: 1; grid-row: 3; }
-    .panel-eco2 { grid-column: 2; grid-row: 3; }
-    .panel-etoh { grid-column: 1 / 3; grid-row: 4; }
-  }
+:root {
+--bg:#0a0c0f;--bg2:#111418;--bg3:#181d24;--border:#1e2630;
+--text:#c8d8e8;--text-dim:#506070;--text-muted:#2a3a4a;
+--green:#00e676;--green-dim:rgba(0,230,118,0.15);
+--red:#ff4444;--yellow:#ffd740;--blue:#40c4ff;
+--purple:#b388ff;--accent:#00e676;
+--iaq-color:#40c4ff;--tvoc-color:#ffd740;
+--eco2-color:#b388ff;--etoh-color:#ff7043;
+--pred-color:rgba(255,68,68,0.8);--raw-color:#ffab40;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+#loginWrap{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999}
+#loginWrap.hidden{display:none}
+.login-box{background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--green);padding:40px 36px;width:360px}
+.login-box h1{font-family:'Space Mono',monospace;font-size:13px;letter-spacing:3px;color:var(--green);text-transform:uppercase;margin-bottom:6px}
+.login-box p{color:var(--text-dim);font-size:11px;margin-bottom:32px}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px}
+.field input{width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--green)}
+.login-btn{width:100%;padding:12px;background:var(--green);color:#000;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;border:none;cursor:pointer;transition:opacity .2s;margin-top:8px}
+.login-btn:hover{opacity:.85}
+.login-err{color:var(--red);font-size:11px;margin-top:12px;display:none}
+#dashboard{display:none;min-height:100vh}
+#dashboard.active{display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:16px}
+.live-dot{width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,230,118,.6)}50%{opacity:.8;box-shadow:0 0 0 6px rgba(0,230,118,0)}}
+.topbar-title{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--text)}
+.topbar-title span{color:var(--green)}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.topbar-right input[type=date]{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;outline:none;cursor:pointer}
+#clockDisplay{font-size:12px;color:var(--green);letter-spacing:2px;min-width:70px;text-align:right}
+.logout-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 12px;cursor:pointer;letter-spacing:1px;transition:.2s}
+.logout-btn:hover{border-color:var(--red);color:var(--red)}
+.reload-badge{font-size:9px;color:var(--text-dim);letter-spacing:1px}
+.reload-badge span{color:var(--green)}
+.layout{display:grid;grid-template-columns:1fr 1fr 1fr 280px;grid-template-rows:auto auto;gap:1px;background:var(--border);min-height:calc(100vh - 48px)}
+.panel{background:var(--bg2);padding:16px;position:relative}
+.panel-iaq-main{grid-column:1/4;grid-row:1;padding:20px 24px}
+.panel-stats{grid-column:4;grid-row:1/3;border-left:1px solid var(--border);display:flex;flex-direction:column}
+.panel-tvoc{grid-column:1;grid-row:2}
+.panel-eco2{grid-column:2;grid-row:2}
+.panel-etoh{grid-column:3;grid-row:2}
+.chart-wrap{position:relative}
+.chart-wrap.main{height:200px}
+.chart-wrap.sub{height:140px}
+.overlay-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,12,15,.4);font-size:11px;color:var(--text-dim);letter-spacing:2px;display:none}
 </style>
 </head>
 <body>
-
-<!-- LOGIN -->
 <div id="loginWrap">
-  <div class="login-box">
-    <h1>⬡ IAQ Monitor</h1>
-    <p>Air Quality · AI Prediction Dashboard</p>
-    <div class="field">
-      <label>Email</label>
-      <input type="email" id="loginEmail" placeholder="user@example.com">
-    </div>
-    <div class="field">
-      <label>Mật khẩu</label>
-      <input type="password" id="loginPass" placeholder="••••••••">
-    </div>
-    <button class="login-btn" onclick="doLogin()">→ Đăng nhập</button>
-    <div class="login-err" id="loginErr"></div>
-  </div>
+<div class="login-box">
+<h1>⬡ IAQ Monitor</h1>
+<p>Air Quality · AI Prediction Dashboard</p>
+<div class="field"><label>Email</label><input type="email" id="loginEmail"></div>
+<div class="field"><label>Mật khẩu</label><input type="password" id="loginPass"></div>
+<button class="login-btn" onclick="doLogin()">→ Đăng nhập</button>
+<div class="login-err" id="loginErr"></div>
+</div>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard">
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="live-dot"></div>
-      <div class="topbar-title">⬡ IAQ LIVE MONITOR · <span>AI Prediction Dashboard</span></div>
-    </div>
-    <div class="topbar-right">
-      <div id="fetchErr" style="font-size:10px;color:#ff4444;display:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-      <span class="reload-badge">auto-reload <span id="countdownDisplay">3s</span></span>
-      <input type="date" id="dateInput">
-      <div id="clockDisplay">--:--:--</div>
-      <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
-    </div>
-  </div>
-
-  <div class="layout">
-    <!-- IAQ MAIN -->
-    <div class="panel panel-iaq-main">
-      <div class="panel-header">
-        <div>
-          <div class="panel-title">IAQ · Chỉ số Không khí</div>
-          <!-- ✅ Updated meta: clarify +  shift -->
-          <div class="panel-meta">Window: 480s (4s/điểm) · Pred & Raw dịch chuyển <span></span> · Real-time Sliding</div>
-        </div>
-        <div class="panel-val iaq" id="iaqCurrent">—</div>
-      </div>
-      <div class="legend">
-        <div class="legend-item"><div class="legend-line actual"></div> IAQ Thực tế</div>
-        <!-- ✅ Updated legend labels to reflect +  shift -->
-        <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán  </div>
-        <div class="legend-item"><div class="legend-line raw"></div> Raw  </div>
-        <div class="legend-item"><div class="legend-line future" style="width:24px;height:2px;opacity:0.5;background:var(--orange)"></div> </div>
-      </div>
-      <div class="chart-wrap main">
-        <canvas id="iaqChart"></canvas>
-        <div class="overlay-msg" id="iaqOverlay">KHÔNG CÓ DỮ LIỆU</div>
-      </div>
-    </div>
-
-    <!-- STATS PANEL -->
-    <div class="panel panel-stats">
-      <div class="stats-section">
-        <div class="stats-label">IAQ · Hiện tại</div>
-        <div class="stat-row"><span class="stat-key">Thực tế:</span><span class="stat-num green"  id="sIaqNow">—</span></div>
-        <div class="stat-row"><span class="stat-key">Dự đoán:</span><span class="stat-num yellow" id="sIaqPred">—</span></div>
-        <div class="stat-row"><span class="stat-key">Raw:</span><span class="stat-num orange" id="sIaqRaw">—</span></div>
-        <div class="stat-row"><span class="stat-key">Min:</span><span class="stat-num dim" id="sIaqMin">—</span></div>
-        <div class="stat-row"><span class="stat-key">Max:</span><span class="stat-num dim" id="sIaqMax">—</span></div>
-        <div class="stat-row"><span class="stat-key">Mean:</span><span class="stat-num dim" id="sIaqMean">—</span></div>
-        <div class="stat-row"><span class="stat-key">Std:</span><span class="stat-num dim" id="sIaqStd">—</span></div>
-      </div>
-
-      <div class="stats-section">
-        <div class="stats-label">Đánh giá mô hình</div>
-        <div class="eval-bar-wrap">
-          <div class="eval-label-row"><span class="eval-label">MAE</span><span class="eval-val" id="evalMAE">—</span></div>
-          <div class="eval-bar"><div class="eval-bar-fill" id="evalMAEBar" style="width:0%;background:var(--green)"></div></div>
-        </div>
-        <div class="eval-bar-wrap">
-          <div class="eval-label-row"><span class="eval-label">RMSE</span><span class="eval-val" id="evalRMSE">—</span></div>
-          <div class="eval-bar"><div class="eval-bar-fill" id="evalRMSEBar" style="width:0%;background:var(--blue)"></div></div>
-        </div>
-        <div class="eval-bar-wrap">
-          <div class="eval-label-row"><span class="eval-label">MAPE</span><span class="eval-val" id="evalMAPE">—</span></div>
-          <div class="eval-bar"><div class="eval-bar-fill" id="evalMAPEBar" style="width:0%;background:var(--yellow)"></div></div>
-        </div>
-        <div class="eval-bar-wrap">
-          <div class="eval-label-row"><span class="eval-label">R²</span><span class="eval-val" id="evalR2">—</span></div>
-          <div class="eval-bar"><div class="eval-bar-fill" id="evalR2Bar" style="width:0%;background:var(--purple)"></div></div>
-        </div>
-      </div>
-
-      <div class="stats-section">
-        <div class="stats-label">STATS (cửa sổ)</div>
-        <table class="compare-table">
-          <tr><th>Metric</th><th>Thực</th><th>Pred</th><th class="col-raw">Raw</th></tr>
-          <tbody id="compareTable">
-            <tr>
-              <td style="color:var(--iaq-color)">IAQ</td>
-              <td id="ctIaqR">—</td><td id="ctIaqP">—</td><td id="ctIaqRaw" class="col-raw">—</td>
-            </tr>
-            <tr>
-              <td style="color:var(--tvoc-color)">TVOC</td>
-              <td id="ctTvocR">—</td><td id="ctTvocP">—</td><td id="ctTvocRaw" class="col-raw">—</td>
-            </tr>
-            <tr>
-              <td style="color:var(--eco2-color)">eCO₂</td>
-              <td id="ctEco2R">—</td><td id="ctEco2P">—</td><td id="ctEco2Raw" class="col-raw">—</td>
-            </tr>
-            <tr>
-              <td style="color:var(--etoh-color)">EtOH</td>
-              <td id="ctEtohR">—</td><td id="ctEtohP">—</td><td id="ctEtohRaw" class="col-raw">—</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="stats-section" style="flex:1">
-        <div class="stats-label">Chất lượng không khí</div>
-        <div id="qualityBadge" class="quality-badge good">TỐT</div>
-        <div style="margin-top:12px; font-size:10px; color:var(--text-dim); line-height:1.6" id="qualityDesc">
-          Không khí trong lành. Thích hợp cho mọi hoạt động ngoài trời.
-        </div>
-      </div>
-    </div>
-
-    <!-- TVOC -->
-    <div class="panel panel-tvoc">
-      <div class="panel-header">
-        <div class="panel-title">TVOC <span style="color:var(--text-muted)">(ppb)</span></div>
-        <div class="panel-val tvoc" id="tvocCurrent">—</div>
-      </div>
-      <div class="sub-legend">
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--tvoc-color)"></div>Thực tế</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred + </div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw + </div>
-      </div>
-      <div class="chart-wrap sub">
-        <canvas id="tvocChart"></canvas>
-        <div class="overlay-msg" id="tvocOverlay">KHÔNG CÓ DỮ LIỆU</div>
-      </div>
-      <div style="display:flex;gap:16px;margin-top:8px">
-        <div style="font-size:10px;color:var(--text-dim)">Pred: <span style="color:var(--yellow)" id="tvocPred">—</span></div>
-        <div style="font-size:10px;color:var(--text-dim)">Raw: <span style="color:var(--orange)" id="tvocRaw">—</span></div>
-        <div style="font-size:10px;color:var(--text-dim)">Δ <span id="tvocDelta" style="color:var(--text-dim)">—</span></div>
-      </div>
-    </div>
-
-    <!-- ECO2 -->
-    <div class="panel panel-eco2">
-      <div class="panel-header">
-        <div class="panel-title">eCO₂ <span style="color:var(--text-muted)">(ppm)</span></div>
-        <div class="panel-val eco2" id="eco2Current">—</div>
-      </div>
-      <div class="sub-legend">
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--eco2-color)"></div>Thực tế</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred + </div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw + </div>
-      </div>
-      <div class="chart-wrap sub">
-        <canvas id="eco2Chart"></canvas>
-        <div class="overlay-msg" id="eco2Overlay">KHÔNG CÓ DỮ LIỆU</div>
-      </div>
-      <div style="display:flex;gap:16px;margin-top:8px">
-        <div style="font-size:10px;color:var(--text-dim)">Pred: <span style="color:var(--purple)" id="eco2Pred">—</span></div>
-        <div style="font-size:10px;color:var(--text-dim)">Raw: <span style="color:var(--orange)" id="eco2Raw">—</span></div>
-        <div style="font-size:10px;color:var(--text-dim)">Δ <span id="eco2Delta" style="color:var(--text-dim)">—</span></div>
-      </div>
-    </div>
-
-    <!-- ETOH -->
-    <div class="panel panel-etoh">
-      <div class="panel-header">
-        <div class="panel-title">EtOH <span style="color:var(--text-muted)">(ppm)</span></div>
-        <div class="panel-val etoh" id="etohCurrent">—</div>
-      </div>
-      <div class="sub-legend">
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--etoh-color)"></div>Thực tế</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred + </div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw + </div>
-      </div>
-      <div class="chart-wrap sub">
-        <canvas id="etohChart"></canvas>
-        <div class="overlay-msg" id="etohOverlay">KHÔNG CÓ DỮ LIỆU</div>
-      </div>
-      <div style="display:flex;gap:16px;margin-top:8px">
-        <div style="font-size:10px;color:var(--text-dim)">Pred: <span style="color:var(--etoh-color)" id="etohPred">—</span></div>
-        <div style="font-size:10px;color:var(--text-dim)">Raw: <span style="color:var(--orange)" id="etohRaw">—</span></div>
-        <div style="font-size:10px;color:var(--text-dim)">Δ <span id="etohDelta" style="color:var(--text-dim)">—</span></div>
-      </div>
-    </div>
-  </div>
-</div>
+<div id="dashboard"></div>
 
 <script>
-const API = 'https://fastapi-web-3.onrender.com';
-let token = null, user = null;
-let charts = {};
-let reloadTimer = null, countdown = 3;
-let lastData = { sensor: {}, pred: {}, raw: {} };
-let currentTime = Date.now();
+const API='https://fastapi-web-3.onrender.com';
+let token=null,user=null,charts={},reloadTimer=null,countdown=3;
+let lastData={sensor:{},pred:{},raw:{}};
+let currentTime=Date.now();
+const PRED_SHIFT_SECONDS=60;
 
-// ✅ KEY CONSTANT: số giây dịch chuyển pred/raw về phía trước (tương lai)
-const PRED_SHIFT_SECONDS = 60;
+setInterval(()=>{
+currentTime=Date.now();
+document.getElementById('clockDisplay').textContent=
+new Date().toLocaleTimeString('vi-VN',{hour12:false});
+},1000);
 
-setInterval(() => {
-  currentTime = Date.now();
-  document.getElementById('clockDisplay').textContent =
-    new Date().toLocaleTimeString('vi-VN', {hour12: false});
-  if (token && user) {
-    ['iaq','tvoc','eco2','etoh'].forEach(m => {
-      renderChart(m, lastData.sensor[m] || [], lastData.pred[m] || [], lastData.raw[m] || []);
-    });
-  }
-}, 1000);
-
-// ─── LOGIN ───
-async function doLogin() {
-  const email = document.getElementById('loginEmail').value;
-  const pass  = document.getElementById('loginPass').value;
-  const err   = document.getElementById('loginErr');
-  err.style.display = 'none';
-
-  try {
-    const fd = new FormData();
-    fd.append('username', email); fd.append('password', pass);
-    const r = await fetch(`${API}/auth/login`, { method:'POST', body: fd });
-    if (!r.ok) throw new Error('Sai email hoặc mật khẩu');
-    const d = await r.json();
-    token = d.access_token;
-    user = { email };
-    localStorage.setItem('aq_token', token);
-    localStorage.setItem('aq_user', JSON.stringify(user));
-    startDashboard();
-  } catch(e) {
-    err.textContent = '✗ ' + e.message;
-    err.style.display = 'block';
-  }
+async function doLogin(){
+const email=document.getElementById('loginEmail').value;
+const pass=document.getElementById('loginPass').value;
+const err=document.getElementById('loginErr');
+err.style.display='none';
+try{
+const fd=new FormData();
+fd.append('username',email);
+fd.append('password',pass);
+const r=await fetch(`${API}/auth/login`,{method:'POST',body:fd});
+if(!r.ok)throw new Error('Sai email hoặc mật khẩu');
+const d=await r.json();
+token=d.access_token;
+user={email};
+localStorage.setItem('aq_token',token);
+localStorage.setItem('aq_user',JSON.stringify(user));
+startDashboard();
+}catch(e){
+err.textContent='✗ '+e.message;
+err.style.display='block';
 }
-
-document.getElementById('loginPass').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
-
-function doLogout() {
-  clearInterval(reloadTimer);
-  token = null; user = null;
-  localStorage.removeItem('aq_token');
-  localStorage.removeItem('aq_user');
-  document.getElementById('loginWrap').classList.remove('hidden');
-  document.getElementById('dashboard').classList.remove('active');
-}
-
-// ─── RESTORE SESSION ───
-function todayLocal() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-window.addEventListener('load', () => {
-  const t = localStorage.getItem('aq_token');
-  const u = localStorage.getItem('aq_user');
-  if (t && u) {
-    token = t; user = JSON.parse(u);
-    startDashboard();
-  }
-  document.getElementById('dateInput').value = todayLocal();
-});
-
-document.getElementById('dateInput').addEventListener('change', () => {
-  clearInterval(reloadTimer);
-  lastData = { sensor: {}, pred: {}, raw: {} };
-  updateAll({}, {}, {});
-  loadAll();
-  startCountdown();
-});
-
-// ─── START DASHBOARD ───
-function startDashboard() {
-  document.getElementById('loginWrap').classList.add('hidden');
-  document.getElementById('dashboard').classList.add('active');
-  document.getElementById('dateInput').value = todayLocal();
-  
-  lastData = { sensor: {}, pred: {}, raw: {} };
-  updateAll({}, {}, {});
-  
-  loadAll();
-  startCountdown();
-}
-
-function startCountdown() {
-  clearInterval(reloadTimer);
-  countdown = 3;
-  document.getElementById('countdownDisplay').textContent = countdown + 's';
-  reloadTimer = setInterval(() => {
-    countdown--;
-    document.getElementById('countdownDisplay').textContent = countdown + 's';
-    if (countdown <= 0) {
-      countdown = 3;
-      loadAll();
-    }
-  }, 1000);
-}
-
-// ─── LOAD DATA ───
-async function loadAll() {
-  if (!token) return;
-  const date = document.getElementById('dateInput').value;
-  if (!date) return;
-
-  try {
-    const headers = { 'Authorization': `Bearer ${token}` };
-    const [sRes, pRes, rRes] = await Promise.all([
-      fetch(`${API}/sensors/all?target_date=${date}`,          { headers }),
-      fetch(`${API}/predictions/all?target_date=${date}`,      { headers }),
-      fetch(`${API}/prediction-raw/all?target_date=${date}`,   { headers })
-    ]);
-
-    if (sRes.status === 401 || pRes.status === 401 || rRes.status === 401) {
-      doLogout(); return;
-    }
-
-    if (!sRes.ok) throw new Error(`Sensors API: ${sRes.status}`);
-    if (!pRes.ok) throw new Error(`Predictions API: ${pRes.status}`);
-    if (!rRes.ok) throw new Error(`Prediction-Raw API: ${rRes.status}`);
-
-    const sensor = await sRes.json();
-    const pred   = await pRes.json();
-    const raw    = await rRes.json();
-
-    document.getElementById('fetchErr').style.display = 'none';
-    updateAll(sensor, pred, raw);
-  } catch(e) {
-    console.error('Fetch error:', e);
-    const errEl = document.getElementById('fetchErr');
-    if (errEl) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
-  }
-}
-
-// ─── UPDATE ALL ───
-function updateAll(sensor, pred, raw) {
-  const merge = (oldA, newA) => {
-    const m = new Map((oldA || []).map(x => [x.time, x.value]));
-    (newA || []).forEach(x => m.set(x.time, x.value));
-    return Array.from(m.entries()).map(([time, value]) => ({ time, value }))
-           .sort((a, b) => a.time.localeCompare(b.time));
-  };
-
-  ['iaq','tvoc','eco2','etoh'].forEach(m => {
-    lastData.sensor[m] = merge(lastData.sensor[m], sensor[m]);
-    lastData.pred[m]   = merge(lastData.pred[m],   pred[m]);
-    lastData.raw[m]    = merge(lastData.raw[m],    raw[m]);
-    
-    const s = lastData.sensor[m];
-    const p = lastData.pred[m];
-    const r = lastData.raw[m];
-    renderChart(m, s, p, r);
-    updateCurrentVal(m, s, p, r);
-  });
-  updateStats(lastData.sensor['iaq'] || [], lastData.pred['iaq'] || [], lastData.raw['iaq'] || []);
-  updateCompareTable(lastData.sensor, lastData.pred, lastData.raw);
-  updateQuality(lastData.sensor['iaq'] || []);
-}
-
-// ─── CHART CONFIG ───
-const metaCfg = {
-  iaq:  { color: '#40c4ff', label: 'IAQ',  yMin: 0, yMax: 5   },
-  tvoc: { color: '#ffd740', label: 'TVOC', yMin: 0, yMax: 5  },
-  eco2: { color: '#b388ff', label: 'eCO₂', yMin: 0, yMax: 800 },
-  etoh: { color: '#ff7043', label: 'EtOH', yMin: 0, yMax: 3   },
-};
-
-function renderChart(metric, sPoints, pPoints, rPoints) {
-  const isMain  = metric === 'iaq';
-  const overlay = document.getElementById(`${metric}Overlay`);
-  const noData  = sPoints.length === 0 && pPoints.length === 0 && rPoints.length === 0;
-  overlay.style.display = noData ? 'flex' : 'none';
-
-  const ctx = document.getElementById(`${metric}Chart`).getContext('2d');
-  if (charts[metric]) { charts[metric].destroy(); charts[metric] = null; }
-  const cfg = metaCfg[metric];
-  const baseDate = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
-  const now = currentTime;
-
-  // ✅ Helper chuyển timestamp -> giây tương đối so với NOW
-  const tsToSeconds = (timeStr) => {
-    let t;
-    try {
-      if (timeStr.includes('T') || timeStr.includes('-')) {
-        t = new Date(timeStr).getTime();
-      } else {
-        t = new Date(baseDate + ' ' + timeStr).getTime();
-      }
-    } catch(e) { return null; }
-    return isNaN(t) ? null : (t - now) / 1000;
-  };
-
-  // ✅ Sensor data: KHÔNG shift, lấy trong cửa sổ bình thường [-460, 0]
-  const sensorData = sPoints.map(p => {
-    const x = tsToSeconds(p.time);
-    if (x === null) return null;
-    // Chỉ hiện dữ liệu thực tế trong khoảng [-460, 0] (quá khứ đến hiện tại)
-    if (x < -465 || x > 5) return null;
-    return { x, y: p.value };
-  }).filter(Boolean);
-
-  // ✅ Pred data: SHIFT +  — dữ liệu timestamp gốc được dịch về phía trước 60 giây
-  // Nghĩa là: điểm pred có timestamp T sẽ được vẽ tại vị trí T +   trên trục x
-  // => Line pred "chạy trước" line thực tế  , phần vượt qua NOW sẽ nằm trong vùng tương lai
-  const predData = pPoints.map(p => {
-    const xOriginal = tsToSeconds(p.time);
-    if (xOriginal === null) return null;
-    const xShifted = xOriginal + PRED_SHIFT_SECONDS; // ✅ dịch + 
-    if (xShifted < -465 || xShifted > PRED_SHIFT_SECONDS + 5) return null;
-    return { x: xShifted, y: p.value };
-  }).filter(Boolean);
-
-  // ✅ Raw data: SHIFT +  — tương tự pred
-  const rawData = rPoints.map(p => {
-    const xOriginal = tsToSeconds(p.time);
-    if (xOriginal === null) return null;
-    const xShifted = xOriginal + PRED_SHIFT_SECONDS; // ✅ dịch + 
-    if (xShifted < -465 || xShifted > PRED_SHIFT_SECONDS + 5) return null;
-    return { x: xShifted, y: p.value };
-  }).filter(Boolean);
-
-  const datasets = [
-    {
-      label: 'Thực tế',
-      data: sensorData,
-      borderColor: cfg.color,
-      backgroundColor: cfg.color + '18',
-      borderWidth: isMain ? 2 : 1.5,
-      fill: isMain,
-      tension: 0.3,
-      pointRadius: 0,
-      pointHitRadius: 10,
-      spanGaps: true,
-    },
-    {
-      label: 'AI Dự đoán  ',
-      data: predData,
-      borderColor: '#ff4444',
-      borderDash: [5, 4],
-      backgroundColor: 'transparent',
-      borderWidth: isMain ? 1.5 : 1.2,
-      fill: false,
-      tension: 0.3,
-      pointRadius: 0,
-      pointHitRadius: 10,
-      spanGaps: true,
-    },
-    {
-      label: 'Raw  ',
-      data: rawData,
-      borderColor: '#ffab40',
-      borderDash: [2, 4],
-      backgroundColor: 'transparent',
-      borderWidth: isMain ? 1.5 : 1.2,
-      fill: false,
-      tension: 0.3,
-      pointRadius: 0,
-      pointHitRadius: 10,
-      spanGaps: true,
-    }
-  ];
-
-  // ✅ Plugin vẽ đường NOW + vùng tương lai có nền khác
-  const nowLinePlugin = {
-    id: 'nowLine',
-    beforeDraw: (chart) => {
-      // Tô vùng tương lai (x: 0 -> PRED_SHIFT_SECONDS) màu nền nhẹ
-      const { ctx, chartArea: { top, bottom, right }, scales: { x } } = chart;
-      const xNow = x.getPixelForValue(0);
-      const xEnd = x.getPixelForValue(PRED_SHIFT_SECONDS);
-      if (xNow < right) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(255,171,64,0.04)'; // vùng tương lai cam nhạt
-        ctx.fillRect(xNow, top, Math.min(xEnd, right) - xNow, bottom - top);
-        ctx.restore();
-      }
-    },
-    afterDraw: (chart) => {
-      const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-      const xPos = x.getPixelForValue(0);
-      if (xPos >= x.left && xPos <= x.right) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(0, 230, 118, 0.8)';
-        ctx.setLineDash([5, 5]);
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(xPos, top);
-        ctx.lineTo(xPos, bottom);
-        ctx.stroke();
-        
-        ctx.fillStyle = 'rgba(10, 12, 15, 0.8)';
-        ctx.fillRect(xPos - 15, top + 2, 30, 14);
-        
-        ctx.fillStyle = '#00e676';
-        ctx.font = 'bold 9px JetBrains Mono';
-        ctx.textAlign = 'center';
-        ctx.fillText('NOW', xPos, top + 12);
-        ctx.restore();
-      }
-    }
-  };
-
-  // ✅ x-axis mở rộng sang phải đến +PRED_SHIFT_SECONDS để hiển thị vùng tương lai
-  charts[metric] = new Chart(ctx, {
-    type: 'line',
-    data: { datasets },
-    plugins: [nowLinePlugin],
-    options: {
-      layout: { padding: { top: 15 } },
-      animation: false,
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#111418',
-          borderColor: '#1e2630',
-          borderWidth: 1,
-          titleColor: '#506070',
-          bodyColor: '#c8d8e8',
-          titleFont: { family: 'JetBrains Mono', size: 10 },
-          bodyFont: { family: 'JetBrains Mono', size: 11 },
-          callbacks: {
-            title: (items) => {
-              const val = items[0].parsed.x;
-              const datasetLabel = items[0].dataset.label || '';
-              // ✅ Với pred/raw, hiển thị timestamp thực gốc (trừ lại shift)
-              const isPredOrRaw = datasetLabel.includes('+ ');
-              const actualOffset = isPredOrRaw ? val - PRED_SHIFT_SECONDS : val;
-              const d = new Date(now + actualOffset * 1000);
-              const timeStr = d.getHours().toString().padStart(2,'0') + ':' +
-                              d.getMinutes().toString().padStart(2,'0') + ':' +
-                              d.getSeconds().toString().padStart(2,'0');
-              if (val > 0 && isPredOrRaw) return `${timeStr} → dự đoán cho +${Math.round(val)}s`;
-              if (val === 0) return 'NOW (' + timeStr + ')';
-              return timeStr + (val > 0 ? ' (Tương lai)' : '');
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          type: 'linear',
-          min: -460,
-          // ✅ Mở rộng trục x sang phải thêm PRED_SHIFT_SECONDS để hiện vùng tương lai
-          max: PRED_SHIFT_SECONDS + 2,
-          grid: { color: '#1e2630' },
-          ticks: {
-            stepSize: 80,
-            color: '#506070',
-            font: { family: 'JetBrains Mono', size: 9 },
-            callback: function(val) {
-              const d = new Date(currentTime + val * 1000);
-              const timeStr = d.getHours().toString().padStart(2,'0') + ':' +
-                              d.getMinutes().toString().padStart(2,'0') + ':' +
-                              d.getSeconds().toString().padStart(2,'0');
-              return timeStr;
-            }
-          }
-        },
-        y: {
-          min: cfg.yMin,
-          max: cfg.yMax,
-          grid: { color: '#1a2230', lineWidth: 0.5 },
-          ticks: {
-            color: '#506070',
-            font: { family: 'JetBrains Mono', size: 9 },
-            maxTicksLimit: 5
-          },
-          border: { color: '#1e2630' }
-        }
-      }
-    }
-  });
-}
-
-// ─── CURRENT VALUES ───
-function updateCurrentVal(metric, sPoints, pPoints, rPoints) {
-  const lastS = sPoints.length ? sPoints[sPoints.length-1].value : null;
-  const lastP = pPoints.length ? pPoints[pPoints.length-1].value : null;
-  const lastR = rPoints.length ? rPoints[rPoints.length-1].value : null;
-
-  const fmt   = v  => v != null ? v.toFixed(1) : '—';
-  const delta = (lastS != null && lastP != null) ? (lastP - lastS).toFixed(2) : '—';
-  const deltaStr = delta !== '—' ? (delta > 0 ? '+' + delta : delta) : '—';
-
-  document.getElementById(`${metric}Current`).textContent = fmt(lastS);
-
-  if (metric === 'iaq') {
-    document.getElementById('iaqCurrent').textContent = fmt(lastS);
-  } else {
-    document.getElementById(`${metric}Pred`).textContent = fmt(lastP);
-    document.getElementById(`${metric}Raw`).textContent  = fmt(lastR);
-    const dEl = document.getElementById(`${metric}Delta`);
-    dEl.textContent = deltaStr;
-    dEl.style.color = delta !== '—' && delta > 0 ? '#ff4444' : delta < 0 ? '#00e676' : '#506070';
-  }
-}
-
-// ─── STATS ───
-function updateStats(sPoints, pPoints, rPoints) {
-  const lastS = sPoints.length ? sPoints[sPoints.length-1].value : null;
-  const lastP = pPoints.length ? pPoints[pPoints.length-1].value : null;
-  const lastR = rPoints.length ? rPoints[rPoints.length-1].value : null;
-
-  const fmt = v => v != null ? v.toFixed(1) : '—';
-
-  document.getElementById('sIaqNow').textContent  = fmt(lastS);
-  document.getElementById('sIaqPred').textContent = fmt(lastP);
-  document.getElementById('sIaqRaw').textContent  = fmt(lastR);
-
-  if (sPoints.length > 0) {
-    const vals = sPoints.map(p => p.value);
-    const min  = Math.min(...vals).toFixed(1);
-    const max  = Math.max(...vals).toFixed(1);
-    const mean = (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1);
-    const std  = Math.sqrt(vals.reduce((a,b) => a + (b - mean) * (b - mean), 0) / vals.length).toFixed(2);
-    document.getElementById('sIaqMin').textContent  = min;
-    document.getElementById('sIaqMax').textContent  = max;
-    document.getElementById('sIaqMean').textContent = mean;
-    document.getElementById('sIaqStd').textContent  = std;
-  }
-
-  // Eval metrics (so sánh sensor vs pred tại cùng timestamp gốc)
-  const paired = sPoints.filter(s => pPoints.find(p => p.time === s.time));
-  if (paired.length > 1) {
-    const actuals = paired.map(s => s.value);
-    const preds   = paired.map(s => pPoints.find(p => p.time === s.time).value);
-    const n = actuals.length;
-    const mae  = actuals.reduce((a,_,i) => a + Math.abs(actuals[i] - preds[i]), 0) / n;
-    const rmse = Math.sqrt(actuals.reduce((a,_,i) => a + (actuals[i] - preds[i]) ** 2, 0) / n);
-    const mape = actuals.reduce((a,_,i) => a + Math.abs((actuals[i] - preds[i]) / Math.max(actuals[i], 0.01)), 0) / n * 100;
-    const meanA  = actuals.reduce((a,b) => a+b, 0) / n;
-    const ss_res = actuals.reduce((a,_,i) => a + (actuals[i] - preds[i]) ** 2, 0);
-    const ss_tot = actuals.reduce((a,_,i) => a + (actuals[i] - meanA) ** 2, 0);
-    const r2 = ss_tot ? 1 - ss_res / ss_tot : 0;
-
-    document.getElementById('evalMAE').textContent  = mae.toFixed(3);
-    document.getElementById('evalRMSE').textContent = rmse.toFixed(3);
-    document.getElementById('evalMAPE').textContent = mape.toFixed(1) + '%';
-    document.getElementById('evalR2').textContent   = r2.toFixed(3);
-
-    document.getElementById('evalMAEBar').style.width  = Math.min(mae / 5 * 100, 100) + '%';
-    document.getElementById('evalRMSEBar').style.width = Math.min(rmse / 5 * 100, 100) + '%';
-    document.getElementById('evalMAPEBar').style.width = Math.min(mape, 100) + '%';
-    document.getElementById('evalR2Bar').style.width   = Math.max(r2 * 100, 0) + '%';
-  }
-}
-
-// ─── COMPARE TABLE ───
-function updateCompareTable(sensor, pred, raw) {
-  const lastVal = arr => arr.length ? arr[arr.length-1].value.toFixed(2) : '—';
-  const metrics = ['iaq','tvoc','eco2','etoh'];
-  const ids = {
-    iaq:  ['ctIaqR',  'ctIaqP',  'ctIaqRaw'],
-    tvoc: ['ctTvocR', 'ctTvocP', 'ctTvocRaw'],
-    eco2: ['ctEco2R', 'ctEco2P', 'ctEco2Raw'],
-    etoh: ['ctEtohR', 'ctEtohP', 'ctEtohRaw']
-  };
-  metrics.forEach(m => {
-    document.getElementById(ids[m][0]).textContent = lastVal(sensor[m] || []);
-    document.getElementById(ids[m][1]).textContent = lastVal(pred[m]   || []);
-    document.getElementById(ids[m][2]).textContent = lastVal(raw[m]    || []);
-  });
-}
-
-// ─── QUALITY ───
-function getIaqLevel(val) {
-  if (val <= 1.9) return { cls: 'very-good', label: 'RẤT TỐT',   desc: 'Không khí rất trong lành. Hoàn toàn an toàn cho mọi hoạt động.' };
-  if (val <= 2.9) return { cls: 'good',      label: 'TỐT',        desc: 'Không khí tốt. Thích hợp cho mọi hoạt động ngoài trời.' };
-  if (val <= 4.0) return { cls: 'moderate',  label: 'TRUNG BÌNH', desc: 'Chấp nhận được. Nhóm nhạy cảm nên hạn chế hoạt động lâu ngoài trời.' };
-  if (val <= 4.9) return { cls: 'poor',      label: 'KÉM',        desc: 'Không khí kém. Hạn chế ra ngoài, đặc biệt trẻ em và người già.' };
-  return           { cls: 'very-poor',  label: 'RẤT KÉM',   desc: 'Không khí ô nhiễm nặng. Ở trong nhà, đóng cửa sổ, dùng máy lọc không khí.' };
-}
-
-function updateQuality(sPoints) {
-  const badge = document.getElementById('qualityBadge');
-  const desc  = document.getElementById('qualityDesc');
-  if (!sPoints.length) return;
-  const last = sPoints[sPoints.length-1].value;
-  const lvl  = getIaqLevel(last);
-  badge.className   = 'quality-badge ' + lvl.cls;
-  badge.textContent = lvl.label;
-  desc.textContent  = lvl.desc;
 }
 </script>
 </body>
 </html>
-đoạn này trong này
