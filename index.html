@@ -616,33 +616,6 @@ function updateAll(sensor, pred, raw) {
   updateQuality(sensor['iaq'] || []);
 }
 
-// ─── FORMAT TIME LABEL ───
-function fmtTimeLabel(timeStr) {
-  try {
-    const d = new Date(timeStr);
-    if (isNaN(d.getTime())) return '';
-    const h = String(d.getHours()).padStart(2, '0');
-    const m = String(d.getMinutes()).padStart(2, '0');
-    const s = String(d.getSeconds()).padStart(2, '0');
-    return `${h}:${m}:${s}`;
-  } catch(e) {
-    return '';
-  }
-}
-
-// ─── PICK TICK INTERVAL (giây) THEO RANGE DỮ LIỆU ───
-function pickTickIntervalSec(rangeSeconds) {
-  if (rangeSeconds <= 30)    return 5;
-  if (rangeSeconds <= 120)   return 10;
-  if (rangeSeconds <= 300)   return 30;
-  if (rangeSeconds <= 600)   return 60;
-  if (rangeSeconds <= 1800)  return 120;
-  if (rangeSeconds <= 3600)  return 300;
-  if (rangeSeconds <= 7200)  return 600;
-  if (rangeSeconds <= 21600) return 1800;
-  return 3600;
-}
-
 // ─── CHART CONFIG ───
 const metaCfg = {
   iaq:  { color: '#40c4ff', label: 'IAQ',  yMin: 0, yMax: 5   },
@@ -677,22 +650,18 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   const rawMap    = new Map(rPoints.map(p => [p.time, p.value]));
 
   // JOIN DỮ LIỆU THEO TIMELINE CHUNG
-  const sensorData = commonTimeline.map(t => ({ x: t, y: sensorMap.get(t) ?? null }));
-  const predData   = commonTimeline.map(t => ({ x: t, y: predMap.get(t)   ?? null }));
-  const rawData    = commonTimeline.map(t => ({ x: t, y: rawMap.get(t)    ?? null }));
-
-  // ── TÍNH TICK INTERVAL THEO THỜI GIAN THỰC ──
-  const firstMs      = new Date(commonTimeline[0]).getTime();
-  const lastMs       = new Date(commonTimeline[commonTimeline.length - 1]).getTime();
-  const rangeSeconds = (lastMs - firstMs) / 1000;
-
-  // Khoảng cách giữa mỗi điểm (giây)
-  const pointDurSec = commonTimeline.length > 1
-    ? rangeSeconds / (commonTimeline.length - 1)
-    : 1;
-
-  // Chọn interval label phù hợp với range
-  const tickIntervalSec = pickTickIntervalSec(rangeSeconds);
+  const sensorData = commonTimeline.map(t => ({
+    x: t,
+    y: sensorMap.get(t) ?? null
+  }));
+  const predData = commonTimeline.map(t => ({
+    x: t,
+    y: predMap.get(t) ?? null
+  }));
+  const rawData = commonTimeline.map(t => ({
+    x: t,
+    y: rawMap.get(t) ?? null
+  }));
 
   const datasets = [
     {
@@ -737,9 +706,9 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
 
   charts[metric] = new Chart(ctx, {
     type: 'line',
-    data: {
+    data: { 
       labels: commonTimeline,
-      datasets
+      datasets 
     },
     options: {
       animation: false,
@@ -756,11 +725,6 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
           bodyColor: '#c8d8e8',
           titleFont: { family: 'JetBrains Mono', size: 10 },
           bodyFont: { family: 'JetBrains Mono', size: 11 },
-          callbacks: {
-            title: function(items) {
-              return fmtTimeLabel(items[0].label);
-            }
-          }
         }
       },
       scales: {
@@ -773,21 +737,13 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
             font: { family: 'JetBrains Mono', size: 9 },
             maxRotation: 45,
             minRotation: 0,
-            autoSkip: false,
-            maxTicksLimit: 999,
+            maxTicksLimit: 60,
             callback: function(value, index) {
-              // Tính số giây từ điểm đầu tiên đến điểm này
-              const tMs  = new Date(commonTimeline[index]).getTime();
-              const diffSec = (tMs - firstMs) / 1000;
-
-              // Hiện label nếu diffSec là bội của tickIntervalSec
-              // Dung sai = nửa khoảng cách giữa 2 điểm
-              const tolerance = pointDurSec * 0.6;
-              const remainder = diffSec % tickIntervalSec;
-              const isOnTick  = remainder < tolerance || (tickIntervalSec - remainder) < tolerance;
-
-              if (index === 0 || isOnTick) {
-                return fmtTimeLabel(commonTimeline[index]);
+              // Hiển thị mỗi 4 giây
+              if (index % 4 === 0) {
+                const m = Math.floor(index / 60);
+                const s = index % 60;
+                return m + 'm' + s + 's';
               }
               return '';
             }
