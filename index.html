@@ -115,30 +115,6 @@
     padding: 5px 12px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
   }
   .logout-btn:hover { border-color: var(--red); color: var(--red); }
-  .clear-btn {
-    background: transparent; border: 1px solid var(--border);
-    color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 10px;
-    padding: 5px 12px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
-  }
-  .clear-btn:hover { border-color: var(--red); color: var(--red); background: rgba(255,68,68,0.08); }
-  #confirmOverlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    display: none; align-items: center; justify-content: center; z-index: 200;
-  }
-  #confirmOverlay.show { display: flex; }
-  .confirm-box {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-top: 2px solid var(--red);
-    padding: 28px 32px; width: 320px; text-align: center;
-  }
-  .confirm-box h3 { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; color: var(--red); margin-bottom: 10px; }
-  .confirm-box p  { font-size: 11px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.6; }
-  .confirm-btns   { display: flex; gap: 10px; }
-  .confirm-btns button { flex: 1; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer; border: 1px solid; letter-spacing: 1px; }
-  .btn-cancel  { background: transparent; border-color: var(--border); color: var(--text-dim); }
-  .btn-cancel:hover { border-color: var(--text-dim); color: var(--text); }
-  .btn-confirm { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
-  .btn-confirm:hover { opacity: 0.85; }
   .reload-badge {
     font-size: 9px; color: var(--text-dim); letter-spacing: 1px;
   }
@@ -323,18 +299,6 @@
   </div>
 </div>
 
-<!-- CONFIRM DIALOG -->
-<div id="confirmOverlay">
-  <div class="confirm-box">
-    <h3>⚠ XÓA TOÀN BỘ DỮ LIỆU</h3>
-    <p>Thao tác này sẽ xóa tất cả sensor data, prediction data và prediction raw data của bạn.<br>Không thể hoàn tác.</p>
-    <div class="confirm-btns">
-      <button class="btn-cancel" onclick="document.getElementById('confirmOverlay').classList.remove('show')">Hủy</button>
-      <button class="btn-confirm" onclick="doClearAll()">Xóa hết</button>
-    </div>
-  </div>
-</div>
-
 <!-- DASHBOARD -->
 <div id="dashboard">
   <div class="topbar">
@@ -347,7 +311,6 @@
       <span class="reload-badge">auto-reload <span id="countdownDisplay">3s</span></span>
       <input type="date" id="dateInput">
       <div id="clockDisplay">--:--:--</div>
-      <button class="clear-btn" onclick="document.getElementById('confirmOverlay').classList.add('show')">Xóa DB</button>
       <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
     </div>
   </div>
@@ -514,25 +477,6 @@ let token = null, user = null;
 let charts = {};
 let reloadTimer = null, countdown = 3;
 
-async function doClearAll() {
-  document.getElementById('confirmOverlay').classList.remove('show');
-  try {
-    const r = await fetch(`${API}/admin/clear-all-data`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (r.status === 401) { doLogout(); return; }
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    // Reload chart ngay sau khi xóa
-    loadAll();
-  } catch(e) {
-    const errEl = document.getElementById('fetchErr');
-    errEl.textContent = '⚠ Xóa thất bại: ' + e.message;
-    errEl.style.display = 'block';
-  }
-}
-
-
 setInterval(() => {
   document.getElementById('clockDisplay').textContent =
     new Date().toLocaleTimeString('vi-VN', {hour12: false});
@@ -576,7 +520,6 @@ function doLogout() {
 }
 
 // ─── RESTORE SESSION ───
-// Lấy ngày hôm nay theo giờ local (tránh UTC offset làm lệch ngày)
 function todayLocal() {
   const now = new Date();
   const y = now.getFullYear();
@@ -615,12 +558,6 @@ function startCountdown() {
   countdown = 3;
   document.getElementById('countdownDisplay').textContent = countdown + 's';
   reloadTimer = setInterval(() => {
-    // Mỗi tick kiểm tra xem ngày có đổi chưa (qua nửa đêm)
-    const today = todayLocal();
-    const dateInput = document.getElementById('dateInput');
-    if (dateInput.value !== today) {
-      dateInput.value = today;
-    }
     countdown--;
     document.getElementById('countdownDisplay').textContent = countdown + 's';
     if (countdown <= 0) {
@@ -631,7 +568,6 @@ function startCountdown() {
 }
 
 // ─── LOAD DATA ───
-// Fetch tất cả 3 nguồn song song: sensors, predictions, prediction-raw
 async function loadAll() {
   if (!token) return;
   const date = document.getElementById('dateInput').value;
@@ -700,7 +636,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
 
   const cfg = metaCfg[metric];
 
-  // ✅ TẠO TIMELINE CHUNG TỪ CẢ 3 SOURCE
+  // TẠO TIMELINE CHUNG TỪ CẢ 3 SOURCE
   const allTimes = new Set([
     ...sPoints.map(p => p.time),
     ...pPoints.map(p => p.time),
@@ -708,12 +644,12 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   ]);
   const commonTimeline = Array.from(allTimes).sort();
 
-  // ✅ TẠO MAP CHO PHÉP LOOKUP NHANH
+  // TẠO MAP CHO PHÉP LOOKUP NHANH
   const sensorMap = new Map(sPoints.map(p => [p.time, p.value]));
   const predMap   = new Map(pPoints.map(p => [p.time, p.value]));
   const rawMap    = new Map(rPoints.map(p => [p.time, p.value]));
 
-  // ✅ JOIN DỮ LIỆU THEO TIMELINE CHUNG
+  // JOIN DỮ LIỆU THEO TIMELINE CHUNG
   const sensorData = commonTimeline.map(t => ({
     x: t,
     y: sensorMap.get(t) ?? null
@@ -771,7 +707,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   charts[metric] = new Chart(ctx, {
     type: 'line',
     data: { 
-      labels: commonTimeline,  // ✅ DÙNG TIMELINE CHUNG
+      labels: commonTimeline,
       datasets 
     },
     options: {
@@ -861,7 +797,7 @@ function updateStats(sPoints, pPoints, rPoints) {
     document.getElementById('sIaqStd').textContent  = std;
   }
 
-  // Eval metrics — dùng cặp sensor vs prediction
+  // Eval metrics
   const paired = sPoints.filter(s => pPoints.find(p => p.time === s.time));
   if (paired.length > 1) {
     const actuals = paired.map(s => s.value);
@@ -905,7 +841,6 @@ function updateCompareTable(sensor, pred, raw) {
 }
 
 // ─── QUALITY ───
-// IAQ: <=1.9 very good | 2-2.9 good | 3-4 medium | 4.1-4.9 poor | >=5 very poor
 function getIaqLevel(val) {
   if (val <= 1.9) return { cls: 'very-good', label: 'RẤT TỐT',   desc: 'Không khí rất trong lành. Hoàn toàn an toàn cho mọi hoạt động.' };
   if (val <= 2.9) return { cls: 'good',      label: 'TỐT',        desc: 'Không khí tốt. Thích hợp cho mọi hoạt động ngoài trời.' };
