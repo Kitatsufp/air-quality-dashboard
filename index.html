@@ -661,62 +661,69 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   const baseDate = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
   const now = currentTime;
   
-  // Chuyển đổi dữ liệu sang dạng {x: offset_seconds, y: value}
-  const toData = (pts) => pts.map(p => {
+  // ✅ FIX: Chuyển đổi dữ liệu sang dạng {x: offset_seconds, y: value}
+  // Thêm 500ms delay cho prediction & raw để tránh bị che
+  const toData = (pts, delayMs = 0) => pts.map(p => {
     let t;
     try {
       if (p.time.includes('T') || p.time.includes('-')) {
-        t = new Date(p.time).getTime();
+        t = new Date(p.time).getTime() + delayMs;
       } else {
-        t = new Date(baseDate + ' ' + p.time).getTime();
+        t = new Date(baseDate + ' ' + p.time).getTime() + delayMs;
       }
     } catch(e) { return null; }
     if (isNaN(t)) return null;
     return { x: (t - now) / 1000, y: p.value };
-  }).filter(p => p !== null && p.x >= -465 && p.x <= 25); // Lấy rộng hơn chút để mượt
+  }).filter(p => p !== null && p.x >= -465 && p.x <= 25);
 
-  const sensorData = toData(sPoints);
-  const predData   = toData(pPoints);
-  const rawData    = toData(rPoints);
+  const sensorData = toData(sPoints, 0);      // Không delay
+  const predData   = toData(pPoints, 500);    // ✅ Delay 0.5s để hiển thị rõ
+  const rawData    = toData(rPoints, 1000);   // ✅ Delay 1s để hiển thị rõ
 
   const datasets = [
+    // ✅ Dataset 1: Sensor (Thực tế) - vẽ trước
     {
       label: 'Thực tế',
       data: sensorData,
       borderColor: cfg.color,
       backgroundColor: cfg.color + '18',
-      borderWidth: isMain ? 2 : 1.5,
+      borderWidth: isMain ? 2.5 : 2,
       fill: isMain,
       tension: 0.3,
       pointRadius: 0,
       pointHitRadius: 10,
       spanGaps: true,
+      order: 3,  // ✅ Vẽ trước (order cao = vẽ trước)
     },
+    // ✅ Dataset 2: Prediction (Dự đoán dashed)
     {
       label: 'Dự đoán',
       data: predData,
       borderColor: '#ff4444',
       borderDash: [5, 4],
       backgroundColor: 'transparent',
-      borderWidth: isMain ? 1.5 : 1.2,
+      borderWidth: isMain ? 2 : 1.8,
       fill: false,
       tension: 0.3,
       pointRadius: 0,
       pointHitRadius: 10,
       spanGaps: true,
+      order: 2,  // ✅ Vẽ sau sensor
     },
+    // ✅ Dataset 3: Raw (dotted)
     {
       label: 'Raw',
       data: rawData,
       borderColor: '#ffab40',
       borderDash: [2, 4],
       backgroundColor: 'transparent',
-      borderWidth: isMain ? 1.5 : 1.2,
+      borderWidth: isMain ? 2 : 1.8,
       fill: false,
       tension: 0.3,
       pointRadius: 0,
       pointHitRadius: 10,
       spanGaps: true,
+      order: 1,  // ✅ Vẽ cuối cùng (nằm trên cùng)
     }
   ];
 
@@ -758,6 +765,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       maintainAspectRatio: false,
       interaction: { mode: 'nearest', intersect: false, axis: 'x' },
       plugins: {
+        filler: { propagate: true },
         legend: { display: false },
         tooltip: {
           backgroundColor: '#111418',
@@ -774,7 +782,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
               const timeStr = d.getHours().toString().padStart(2,'0') + ':' + 
                               d.getMinutes().toString().padStart(2,'0') + ':' + 
                               d.getSeconds().toString().padStart(2,'0');
-              if (val === 0) return 'NOW (' + timeStr + ')';
+              if (Math.abs(val) < 0.5) return 'NOW (' + timeStr + ')';
               return timeStr + (val > 0 ? ' (Dự đoán)' : '');
             }
           }
