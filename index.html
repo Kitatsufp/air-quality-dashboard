@@ -704,7 +704,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   const rawData = rPoints.map(p => {
     const xOriginal = tsToSeconds(p.time);
     if (xOriginal === null) return null;
-    const xShifted = xOriginal + PRED_SHIFT_SECONDS; // ✅ dịch + 
+    const xShifted = xOriginal; // ✅ dịch + 
     if (xShifted < -465 || xShifted > PRED_SHIFT_SECONDS + 5) return null;
     return { x: xShifted, y: p.value };
   }).filter(Boolean);
