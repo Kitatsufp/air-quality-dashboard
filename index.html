@@ -322,16 +322,16 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">IAQ · Chỉ số Không khí</div>
-          <!-- ✅ Updated meta: clarify +20s shift -->
-          <div class="panel-meta">Window: 480s (4s/điểm) · Pred & Raw dịch chuyển <span>+20s về tương lai</span> · Real-time Sliding</div>
+          <!-- ✅ Updated meta: clarify +60s shift -->
+          <div class="panel-meta">Window: 480s (4s/điểm) · Pred & Raw dịch chuyển <span>+60s về tương lai</span> · Real-time Sliding</div>
         </div>
         <div class="panel-val iaq" id="iaqCurrent">—</div>
       </div>
       <div class="legend">
         <div class="legend-item"><div class="legend-line actual"></div> IAQ Thực tế</div>
-        <!-- ✅ Updated legend labels to reflect +20s shift -->
-        <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+20s)</div>
-        <div class="legend-item"><div class="legend-line raw"></div> Raw (+20s)</div>
+        <!-- ✅ Updated legend labels to reflect +60s shift -->
+        <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+60s)</div>
+        <div class="legend-item"><div class="legend-line raw"></div> Raw (+60s)</div>
         <div class="legend-item"><div class="legend-line future" style="width:24px;height:2px;opacity:0.5;background:var(--orange)"></div> Tương lai</div>
       </div>
       <div class="chart-wrap main">
@@ -415,8 +415,8 @@
       </div>
       <div class="sub-legend">
         <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--tvoc-color)"></div>Thực tế</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred +20s</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw +20s</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred +60s</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw +60s</div>
       </div>
       <div class="chart-wrap sub">
         <canvas id="tvocChart"></canvas>
@@ -437,8 +437,8 @@
       </div>
       <div class="sub-legend">
         <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--eco2-color)"></div>Thực tế</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred +20s</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw +20s</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred +60s</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw +60s</div>
       </div>
       <div class="chart-wrap sub">
         <canvas id="eco2Chart"></canvas>
@@ -459,8 +459,8 @@
       </div>
       <div class="sub-legend">
         <div class="sub-legend-item"><div class="sub-legend-dot" style="background:var(--etoh-color)"></div>Thực tế</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred +20s</div>
-        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw +20s</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dashed var(--red)"></div>Pred +60s</div>
+        <div class="sub-legend-item"><div class="sub-legend-dot" style="border-top:1.5px dotted var(--raw-color)"></div>Raw +60s</div>
       </div>
       <div class="chart-wrap sub">
         <canvas id="etohChart"></canvas>
@@ -690,22 +690,22 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
     return { x, y: p.value };
   }).filter(Boolean);
 
-  // ✅ Pred data: SHIFT +20s — dữ liệu timestamp gốc được dịch về phía trước 20 giây
-  // Nghĩa là: điểm pred có timestamp T sẽ được vẽ tại vị trí T + 20s trên trục x
-  // => Line pred "chạy trước" line thực tế 20s, phần vượt qua NOW sẽ nằm trong vùng tương lai
+  // ✅ Pred data: SHIFT +60s — dữ liệu timestamp gốc được dịch về phía trước 60 giây
+  // Nghĩa là: điểm pred có timestamp T sẽ được vẽ tại vị trí T + 60s trên trục x
+  // => Line pred "chạy trước" line thực tế 60s, phần vượt qua NOW sẽ nằm trong vùng tương lai
   const predData = pPoints.map(p => {
     const xOriginal = tsToSeconds(p.time);
     if (xOriginal === null) return null;
-    const xShifted = xOriginal + PRED_SHIFT_SECONDS; // ✅ dịch +20s
+    const xShifted = xOriginal + PRED_SHIFT_SECONDS; // ✅ dịch +60s
     if (xShifted < -465 || xShifted > PRED_SHIFT_SECONDS + 5) return null;
     return { x: xShifted, y: p.value };
   }).filter(Boolean);
 
-  // ✅ Raw data: SHIFT +20s — tương tự pred
+  // ✅ Raw data: SHIFT +60s — tương tự pred
   const rawData = rPoints.map(p => {
     const xOriginal = tsToSeconds(p.time);
     if (xOriginal === null) return null;
-    const xShifted = xOriginal + PRED_SHIFT_SECONDS; // ✅ dịch +20s
+    const xShifted = xOriginal + PRED_SHIFT_SECONDS; // ✅ dịch +60s
     if (xShifted < -465 || xShifted > PRED_SHIFT_SECONDS + 5) return null;
     return { x: xShifted, y: p.value };
   }).filter(Boolean);
@@ -724,7 +724,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       spanGaps: true,
     },
     {
-      label: 'AI Dự đoán (+20s)',
+      label: 'AI Dự đoán (+60s)',
       data: predData,
       borderColor: '#ff4444',
       borderDash: [5, 4],
@@ -737,7 +737,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       spanGaps: true,
     },
     {
-      label: 'Raw (+20s)',
+      label: 'Raw (+60s)',
       data: rawData,
       borderColor: '#ffab40',
       borderDash: [2, 4],
@@ -817,7 +817,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
               const val = items[0].parsed.x;
               const datasetLabel = items[0].dataset.label || '';
               // ✅ Với pred/raw, hiển thị timestamp thực gốc (trừ lại shift)
-              const isPredOrRaw = datasetLabel.includes('+20s');
+              const isPredOrRaw = datasetLabel.includes('+60s');
               const actualOffset = isPredOrRaw ? val - PRED_SHIFT_SECONDS : val;
               const d = new Date(now + actualOffset * 1000);
               const timeStr = d.getHours().toString().padStart(2,'0') + ':' +
