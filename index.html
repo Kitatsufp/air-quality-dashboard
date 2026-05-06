@@ -332,7 +332,7 @@
         <!-- ✅ Updated legend labels to reflect +20s shift -->
         <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+20s)</div>
         <div class="legend-item"><div class="legend-line raw"></div> Raw (+20s)</div>
-        <div class="legend-item"><div class="legend-line future" style="width:24px;height:2px;opacity:0.5;background:var(--orange)"></div> Tương lai</div>
+        <div class="legend-item"><div class="legend-line future" style="width:24px;height:2px;opacity:0.5;background:var(--orange)"></div> </div>
       </div>
       <div class="chart-wrap main">
         <canvas id="iaqChart"></canvas>
@@ -785,7 +785,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
                               d.getSeconds().toString().padStart(2,'0');
               if (val > 0 && isPredOrRaw) return `${timeStr} → dự đoán cho +${Math.round(val)}s`;
               if (val === 0) return 'NOW (' + timeStr + ')';
-              return timeStr + (val > 0 ? ' (Tương lai)' : '');
+              return timeStr + (val > 0 ? ' ()' : '');
             }
           }
         }
