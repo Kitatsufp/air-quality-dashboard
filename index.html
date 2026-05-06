@@ -737,17 +737,13 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
             font: { family: 'JetBrains Mono', size: 9 },
             maxRotation: 45,
             minRotation: 0,
+            maxTicksLimit: 60,
             callback: function(value, index) {
               // Hiển thị mỗi 4 giây
               if (index % 4 === 0) {
-                const h = Math.floor(index / 3600);
-                const m = Math.floor((index % 3600) / 60);
+                const m = Math.floor(index / 60);
                 const s = index % 60;
-                let result = '';
-                if (h > 0) result += h + 'h';
-                if (m > 0) result += m + 'm';
-                if (s > 0 || (!h && !m)) result += s + 's';
-                return result;
+                return m + 'm' + s + 's';
               }
               return '';
             }
