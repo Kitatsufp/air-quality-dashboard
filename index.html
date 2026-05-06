@@ -330,8 +330,8 @@
       <div class="legend">
         <div class="legend-item"><div class="legend-line actual"></div> IAQ Thực tế</div>
         <!-- ✅ Updated legend labels to reflect +  shift -->
-        <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+ )</div>
-        <div class="legend-item"><div class="legend-line raw"></div> Raw (+ )</div>
+        <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán  </div>
+        <div class="legend-item"><div class="legend-line raw"></div> Raw  </div>
         <div class="legend-item"><div class="legend-line future" style="width:24px;height:2px;opacity:0.5;background:var(--orange)"></div> </div>
       </div>
       <div class="chart-wrap main">
@@ -724,7 +724,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       spanGaps: true,
     },
     {
-      label: 'AI Dự đoán (+ )',
+      label: 'AI Dự đoán  ',
       data: predData,
       borderColor: '#ff4444',
       borderDash: [5, 4],
@@ -737,7 +737,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       spanGaps: true,
     },
     {
-      label: 'Raw (+ )',
+      label: 'Raw  ',
       data: rawData,
       borderColor: '#ffab40',
       borderDash: [2, 4],
