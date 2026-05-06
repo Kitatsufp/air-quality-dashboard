@@ -323,7 +323,7 @@
         <div>
           <div class="panel-title">IAQ · Chỉ số Không khí</div>
           <!-- ✅ Updated meta: clarify +20s shift -->
-          <div class="panel-meta">Window: 480s (4s/điểm) · Pred & Raw dịch chuyển <span>+20s </span> · Real-time Sliding</div>
+          <div class="panel-meta">Window: 480s (4s/điểm) · Pred & Raw dịch chuyển <span>+20s về tương lai</span> · Real-time Sliding</div>
         </div>
         <div class="panel-val iaq" id="iaqCurrent">—</div>
       </div>
@@ -332,7 +332,7 @@
         <!-- ✅ Updated legend labels to reflect +20s shift -->
         <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+20s)</div>
         <div class="legend-item"><div class="legend-line raw"></div> Raw (+20s)</div>
-        <div class="legend-item"><div class="legend-line future" style="width:24px;height:2px;opacity:0.5;background:var(--orange)"></div> </div>
+        <div class="legend-item"><div class="legend-line future" style="width:24px;height:2px;opacity:0.5;background:var(--orange)"></div> Tương lai</div>
       </div>
       <div class="chart-wrap main">
         <canvas id="iaqChart"></canvas>
@@ -750,12 +750,52 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       spanGaps: true,
     }
   ];
- 
+
+  // ✅ Plugin vẽ đường NOW + vùng tương lai có nền khác
+  const nowLinePlugin = {
+    id: 'nowLine',
+    beforeDraw: (chart) => {
+      // Tô vùng tương lai (x: 0 -> PRED_SHIFT_SECONDS) màu nền nhẹ
+      const { ctx, chartArea: { top, bottom, right }, scales: { x } } = chart;
+      const xNow = x.getPixelForValue(0);
+      const xEnd = x.getPixelForValue(PRED_SHIFT_SECONDS);
+      if (xNow < right) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,171,64,0.04)'; // vùng tương lai cam nhạt
+        ctx.fillRect(xNow, top, Math.min(xEnd, right) - xNow, bottom - top);
+        ctx.restore();
+      }
+    },
+    afterDraw: (chart) => {
+      const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+      const xPos = x.getPixelForValue(0);
+      if (xPos >= x.left && xPos <= x.right) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 230, 118, 0.8)';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(xPos, top);
+        ctx.lineTo(xPos, bottom);
+        ctx.stroke();
+        
+        ctx.fillStyle = 'rgba(10, 12, 15, 0.8)';
+        ctx.fillRect(xPos - 15, top + 2, 30, 14);
+        
+        ctx.fillStyle = '#00e676';
+        ctx.font = 'bold 9px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText('NOW', xPos, top + 12);
+        ctx.restore();
+      }
+    }
+  };
+
   // ✅ x-axis mở rộng sang phải đến +PRED_SHIFT_SECONDS để hiển thị vùng tương lai
   charts[metric] = new Chart(ctx, {
     type: 'line',
     data: { datasets },
-    plugins: [],
+    plugins: [nowLinePlugin],
     options: {
       layout: { padding: { top: 15 } },
       animation: false,
@@ -785,7 +825,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
                               d.getSeconds().toString().padStart(2,'0');
               if (val > 0 && isPredOrRaw) return `${timeStr} → dự đoán cho +${Math.round(val)}s`;
               if (val === 0) return 'NOW (' + timeStr + ')';
-              return timeStr + (val > 0 ? ' ()' : '');
+              return timeStr + (val > 0 ? ' (Tương lai)' : '');
             }
           }
         }
@@ -938,3 +978,4 @@ function updateQuality(sPoints) {
 </script>
 </body>
 </html>
+đoạn này trong này
