@@ -750,47 +750,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       spanGaps: true,
     }
   ];
-
-  // ✅ Plugin vẽ đường NOW + vùng tương lai có nền khác
-  const nowLinePlugin = {
-    id: 'nowLine',
-    beforeDraw: (chart) => {
-      // Tô vùng tương lai (x: 0 -> PRED_SHIFT_SECONDS) màu nền nhẹ
-      const { ctx, chartArea: { top, bottom, right }, scales: { x } } = chart;
-      const xNow = x.getPixelForValue(0);
-      const xEnd = x.getPixelForValue(PRED_SHIFT_SECONDS);
-      if (xNow < right) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(255,171,64,0.04)'; // vùng tương lai cam nhạt
-        ctx.fillRect(xNow, top, Math.min(xEnd, right) - xNow, bottom - top);
-        ctx.restore();
-      }
-    },
-    afterDraw: (chart) => {
-      const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-      const xPos = x.getPixelForValue(0);
-      if (xPos >= x.left && xPos <= x.right) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(0, 230, 118, 0.8)';
-        ctx.setLineDash([5, 5]);
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(xPos, top);
-        ctx.lineTo(xPos, bottom);
-        ctx.stroke();
-        
-        ctx.fillStyle = 'rgba(10, 12, 15, 0.8)';
-        ctx.fillRect(xPos - 15, top + 2, 30, 14);
-        
-        ctx.fillStyle = '#00e676';
-        ctx.font = 'bold 9px JetBrains Mono';
-        ctx.textAlign = 'center';
-        ctx.fillText('NOW', xPos, top + 12);
-        ctx.restore();
-      }
-    }
-  };
-
+ 
   // ✅ x-axis mở rộng sang phải đến +PRED_SHIFT_SECONDS để hiển thị vùng tương lai
   charts[metric] = new Chart(ctx, {
     type: 'line',
