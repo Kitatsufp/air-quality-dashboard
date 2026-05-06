@@ -321,7 +321,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">IAQ · Chỉ số Không khí</div>
-          <div class="panel-meta">Window=10 bước · Dự đoán trước +5 bước · <span>Hiển thị 120 điểm</span></div>
+          <div class="panel-meta">Sử dụng 10 điểm quá khứ · Dự đoán +5 điểm · <span>Hiển thị 120 điểm</span></div>
         </div>
         <div class="panel-val iaq" id="iaqCurrent">—</div>
       </div>
@@ -740,7 +740,14 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
             callback: function(value, index) {
               // Hiển thị mỗi 4 giây
               if (index % 4 === 0) {
-                return value;
+                const h = Math.floor(index / 3600);
+                const m = Math.floor((index % 3600) / 60);
+                const s = index % 60;
+                let result = '';
+                if (h > 0) result += h + 'h';
+                if (m > 0) result += m + 'm';
+                if (s > 0 || (!h && !m)) result += s + 's';
+                return result;
               }
               return '';
             }
