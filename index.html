@@ -260,7 +260,7 @@
   .overlay-msg {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(10,12,15,.85);
+    background: rgba(10,12,15,.4);
     font-size: 11px; color: var(--text-dim); letter-spacing: 2px;
     display: none;
   }
@@ -321,7 +321,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">IAQ · Chỉ số Không khí</div>
-          <div class="panel-meta">Sử dụng 10 điểm quá khứ · Dự đoán +5 điểm · <span>Hiển thị 120 điểm</span></div>
+          <div class="panel-meta">Window: 480s (4s/điểm) · Dự đoán +20s · <span>Real-time Sliding</span></div>
         </div>
         <div class="panel-val iaq" id="iaqCurrent">—</div>
       </div>
@@ -476,10 +476,18 @@ const API = 'https://fastapi-web-3.onrender.com';
 let token = null, user = null;
 let charts = {};
 let reloadTimer = null, countdown = 3;
+let lastData = { sensor: {}, pred: {}, raw: {} };
+let currentTime = Date.now();
 
 setInterval(() => {
+  currentTime = Date.now();
   document.getElementById('clockDisplay').textContent =
     new Date().toLocaleTimeString('vi-VN', {hour12: false});
+  if (token && user) {
+    ['iaq','tvoc','eco2','etoh'].forEach(m => {
+      renderChart(m, lastData.sensor[m] || [], lastData.pred[m] || [], lastData.raw[m] || []);
+    });
+  }
 }, 1000);
 
 // ─── LOGIN ───
@@ -540,6 +548,8 @@ window.addEventListener('load', () => {
 
 document.getElementById('dateInput').addEventListener('change', () => {
   clearInterval(reloadTimer);
+  lastData = { sensor: {}, pred: {}, raw: {} }; // Xóa cache khi đổi ngày
+  updateAll({}, {}, {});
   loadAll();
   startCountdown();
 });
@@ -548,7 +558,11 @@ document.getElementById('dateInput').addEventListener('change', () => {
 function startDashboard() {
   document.getElementById('loginWrap').classList.add('hidden');
   document.getElementById('dashboard').classList.add('active');
-  document.getElementById('dateInput').valueAsDate = new Date();
+  document.getElementById('dateInput').value = todayLocal();
+  
+  lastData = { sensor: {}, pred: {}, raw: {} }; // Reset khi bắt đầu
+  updateAll({}, {}, {});
+  
   loadAll();
   startCountdown();
 }
@@ -604,16 +618,27 @@ async function loadAll() {
 
 // ─── UPDATE ALL ───
 function updateAll(sensor, pred, raw) {
+  const merge = (oldA, newA) => {
+    const m = new Map((oldA || []).map(x => [x.time, x.value]));
+    (newA || []).forEach(x => m.set(x.time, x.value));
+    return Array.from(m.entries()).map(([time, value]) => ({ time, value }))
+           .sort((a, b) => a.time.localeCompare(b.time));
+  };
+
   ['iaq','tvoc','eco2','etoh'].forEach(m => {
-    const s = sensor[m] || [];
-    const p = pred[m]   || [];
-    const r = raw[m]    || [];
+    lastData.sensor[m] = merge(lastData.sensor[m], sensor[m]);
+    lastData.pred[m]   = merge(lastData.pred[m],   pred[m]);
+    lastData.raw[m]    = merge(lastData.raw[m],    raw[m]);
+    
+    const s = lastData.sensor[m];
+    const p = lastData.pred[m];
+    const r = lastData.raw[m];
     renderChart(m, s, p, r);
     updateCurrentVal(m, s, p, r);
   });
-  updateStats(sensor['iaq'] || [], pred['iaq'] || [], raw['iaq'] || []);
-  updateCompareTable(sensor, pred, raw);
-  updateQuality(sensor['iaq'] || []);
+  updateStats(lastData.sensor['iaq'] || [], lastData.pred['iaq'] || [], lastData.raw['iaq'] || []);
+  updateCompareTable(lastData.sensor, lastData.pred, lastData.raw);
+  updateQuality(lastData.sensor['iaq'] || []);
 }
 
 // ─── CHART CONFIG ───
@@ -632,36 +657,27 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
 
   const ctx = document.getElementById(`${metric}Chart`).getContext('2d');
   if (charts[metric]) { charts[metric].destroy(); charts[metric] = null; }
-  if (noData) return;
-
   const cfg = metaCfg[metric];
+  const baseDate = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
+  const now = currentTime;
+  
+  // Chuyển đổi dữ liệu sang dạng {x: offset_seconds, y: value}
+  const toData = (pts) => pts.map(p => {
+    let t;
+    try {
+      if (p.time.includes('T') || p.time.includes('-')) {
+        t = new Date(p.time).getTime();
+      } else {
+        t = new Date(baseDate + ' ' + p.time).getTime();
+      }
+    } catch(e) { return null; }
+    if (isNaN(t)) return null;
+    return { x: (t - now) / 1000, y: p.value };
+  }).filter(p => p !== null && p.x >= -465 && p.x <= 25); // Lấy rộng hơn chút để mượt
 
-  // TẠO TIMELINE CHUNG TỪ CẢ 3 SOURCE
-  const allTimes = new Set([
-    ...sPoints.map(p => p.time),
-    ...pPoints.map(p => p.time),
-    ...rPoints.map(p => p.time)
-  ]);
-  const commonTimeline = Array.from(allTimes).sort();
-
-  // TẠO MAP CHO PHÉP LOOKUP NHANH
-  const sensorMap = new Map(sPoints.map(p => [p.time, p.value]));
-  const predMap   = new Map(pPoints.map(p => [p.time, p.value]));
-  const rawMap    = new Map(rPoints.map(p => [p.time, p.value]));
-
-  // JOIN DỮ LIỆU THEO TIMELINE CHUNG
-  const sensorData = commonTimeline.map(t => ({
-    x: t,
-    y: sensorMap.get(t) ?? null
-  }));
-  const predData = commonTimeline.map(t => ({
-    x: t,
-    y: predMap.get(t) ?? null
-  }));
-  const rawData = commonTimeline.map(t => ({
-    x: t,
-    y: rawMap.get(t) ?? null
-  }));
+  const sensorData = toData(sPoints);
+  const predData   = toData(pPoints);
+  const rawData    = toData(rPoints);
 
   const datasets = [
     {
@@ -671,7 +687,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       backgroundColor: cfg.color + '18',
       borderWidth: isMain ? 2 : 1.5,
       fill: isMain,
-      tension: 0.35,
+      tension: 0.3,
       pointRadius: 0,
       pointHitRadius: 10,
       spanGaps: true,
@@ -684,7 +700,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       backgroundColor: 'transparent',
       borderWidth: isMain ? 1.5 : 1.2,
       fill: false,
-      tension: 0.35,
+      tension: 0.3,
       pointRadius: 0,
       pointHitRadius: 10,
       spanGaps: true,
@@ -697,20 +713,46 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       backgroundColor: 'transparent',
       borderWidth: isMain ? 1.5 : 1.2,
       fill: false,
-      tension: 0.35,
+      tension: 0.3,
       pointRadius: 0,
       pointHitRadius: 10,
       spanGaps: true,
     }
   ];
 
+  const nowLinePlugin = {
+    id: 'nowLine',
+    afterDraw: (chart) => {
+      const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+      const xPos = x.getPixelForValue(0);
+      if (xPos >= x.left && xPos <= x.right) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 230, 118, 0.8)';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(xPos, top);
+        ctx.lineTo(xPos, bottom);
+        ctx.stroke();
+        
+        ctx.fillStyle = 'rgba(10, 12, 15, 0.8)';
+        ctx.fillRect(xPos - 15, top + 2, 30, 14);
+        
+        ctx.fillStyle = '#00e676';
+        ctx.font = 'bold 9px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText('NOW', xPos, top + 12);
+        ctx.restore();
+      }
+    }
+  };
+
   charts[metric] = new Chart(ctx, {
     type: 'line',
-    data: { 
-      labels: commonTimeline,
-      datasets 
-    },
+    data: { datasets },
+    plugins: [nowLinePlugin],
     options: {
+      layout: { padding: { top: 15 } },
       animation: false,
       responsive: true,
       maintainAspectRatio: false,
@@ -725,34 +767,41 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
           bodyColor: '#c8d8e8',
           titleFont: { family: 'JetBrains Mono', size: 10 },
           bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            title: (items) => {
+              const val = items[0].parsed.x;
+              const d = new Date(now + val * 1000);
+              const timeStr = d.getHours().toString().padStart(2,'0') + ':' + 
+                              d.getMinutes().toString().padStart(2,'0') + ':' + 
+                              d.getSeconds().toString().padStart(2,'0');
+              if (val === 0) return 'NOW (' + timeStr + ')';
+              return timeStr + (val > 0 ? ' (Dự đoán)' : '');
+            }
+          }
         }
       },
       scales: {
         x: {
-          type: 'category',
-          display: true,
+          type: 'linear',
+          min: -460,
+          max: 20,
           grid: { color: '#1e2630' },
           ticks: {
+            stepSize: 80,
             color: '#506070',
             font: { family: 'JetBrains Mono', size: 9 },
-            maxRotation: 45,
-            minRotation: 0,
-            maxTicksLimit: 60,
-            callback: function(value, index) {
-              // Hiển thị mỗi 4 giây
-              if (index % 4 === 0) {
-                const m = Math.floor(index / 60);
-                const s = index % 60;
-                return m + 'm' + s + 's';
-              }
-              return '';
+            callback: function(val) {
+              const d = new Date(currentTime + val * 1000);
+              const timeStr = d.getHours().toString().padStart(2,'0') + ':' + 
+                              d.getMinutes().toString().padStart(2,'0') + ':' + 
+                              d.getSeconds().toString().padStart(2,'0');
+              return timeStr;
             }
           }
         },
         y: {
           min: cfg.yMin,
           max: cfg.yMax,
-          beginAtZero: false,
           grid: { color: '#1a2230', lineWidth: 0.5 },
           ticks: {
             color: '#506070',
