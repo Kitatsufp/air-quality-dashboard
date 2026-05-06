@@ -265,13 +265,6 @@
     display: none;
   }
 
-  /* ── RENDERING STATUS ── */
-  .rendering-indicator {
-    font-size: 8px; letter-spacing: 2px; color: var(--text-muted);
-    margin-top: 4px;
-  }
-  .rendering-indicator.active { color: var(--green); }
-
   /* ── RESPONSIVE ── */
   @media (max-width: 1100px) {
     .layout {
@@ -315,7 +308,7 @@
     </div>
     <div class="topbar-right">
       <div id="fetchErr" style="font-size:10px;color:#ff4444;display:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-      <span class="reload-badge">render <span id="renderStatus">idle</span></span>
+      <span class="reload-badge">auto-reload <span id="countdownDisplay">3s</span></span>
       <input type="date" id="dateInput">
       <div id="clockDisplay">--:--:--</div>
       <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
@@ -329,7 +322,6 @@
         <div>
           <div class="panel-title">IAQ · Chỉ số Không khí</div>
           <div class="panel-meta">Sử dụng 10 điểm quá khứ · Dự đoán +5 điểm · <span>Hiển thị 120 điểm</span></div>
-          <div class="rendering-indicator" id="iaqRenderStatus">idle</div>
         </div>
         <div class="panel-val iaq" id="iaqCurrent">—</div>
       </div>
@@ -483,195 +475,7 @@
 const API = 'https://fastapi-web-3.onrender.com';
 let token = null, user = null;
 let charts = {};
-let reloadTimer = null;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ RENDER QUEUE STATE (NEW - CORE FIX)                                     │
-// │                                                                          │
-// │ This state object manages sequential rendering of data points to match  │
-// │ the temporal spacing from the backend (every ~4 seconds).               │
-// └─────────────────────────────────────────────────────────────────────────┘
-// ═══════════════════════════════════════════════════════════════════════════
-
-let renderQueueState = {
-  iaq:  { active: false, queue: [], index: 0, timers: [] },
-  tvoc: { active: false, queue: [], index: 0, timers: [] },
-  eco2: { active: false, queue: [], index: 0, timers: [] },
-  etoh: { active: false, queue: [], index: 0, timers: [] }
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ UTILITY: Calculate Time Deltas Between Points                           │
-// └─────────────────────────────────────────────────────────────────────────┘
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Given an array of points with timestamps, calculate the time delta (ms)
- * between consecutive points.
- * 
- * Example:
- *   Points: [{time: "2026-05-06T18:00:00", value: 2.5}, 
- *            {time: "2026-05-06T18:00:04", value: 2.6}]
- *   Returns: [4000]  (4000 ms between point 0 and point 1)
- */
-function calculateTimeDeltas(points) {
-  if (points.length < 2) return [];
-  
-  const deltas = [];
-  for (let i = 1; i < points.length; i++) {
-    try {
-      const prev = new Date(points[i-1].time);
-      const curr = new Date(points[i].time);
-      const deltaMs = curr - prev;
-      
-      // Validate delta (should be ~4000ms, but allow some tolerance)
-      if (deltaMs > 0) {
-        deltas.push(Math.max(deltaMs, 500)); // Min 500ms to avoid UI thrashing
-      }
-    } catch (e) {
-      console.warn('Invalid timestamp in points:', e);
-      deltas.push(4000); // Fallback to 4s
-    }
-  }
-  return deltas;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ CORE FIX: Sequential Render Queue Manager                               │
-// │                                                                          │
-// │ This function schedules rendering of data points with proper delays.   │
-// │ Instead of rendering 120 points instantly, it renders one point every  │
-// │ ~4 seconds, matching the backend sampling rate.                        │
-// └─────────────────────────────────────────────────────────────────────────┘
-// ═══════════════════════════════════════════════════════════════════════════
-
-function scheduleRenderQueue(metric, sensorPoints, predPoints, rawPoints) {
-  const state = renderQueueState[metric];
-  
-  // Cancel any previous rendering for this metric
-  if (state.active) {
-    state.timers.forEach(timer => clearTimeout(timer));
-    state.timers = [];
-  }
-  
-  // Calculate time deltas from sensor data (source of truth)
-  const deltas = calculateTimeDeltas(sensorPoints);
-  
-  if (sensorPoints.length === 0) {
-    state.active = false;
-    updateRenderStatus(metric, 'idle');
-    return;
-  }
-  
-  // Create queue of {sensor, pred, raw} tuples
-  const renderQueue = [];
-  for (let i = 0; i < sensorPoints.length; i++) {
-    renderQueue.push({
-      sensor: sensorPoints[i],
-      pred: predPoints[i] || null,
-      raw: rawPoints[i] || null,
-      index: i
-    });
-  }
-  
-  state.queue = renderQueue;
-  state.index = 0;
-  state.active = true;
-  
-  console.log(`[${metric.toUpperCase()}] Scheduling render of ${renderQueue.length} points with deltas:`, deltas);
-  
-  // Render first point immediately
-  updateRenderStatus(metric, `rendering (1/${renderQueue.length})`);
-  updateChartWithPoint(metric, renderQueue[0].sensor, renderQueue[0].pred, renderQueue[0].raw);
-  
-  // Schedule remaining points with delays
-  scheduleNextRenderPoint(metric, deltas);
-}
-
-function scheduleNextRenderPoint(metric, deltas) {
-  const state = renderQueueState[metric];
-  
-  if (state.index >= state.queue.length - 1) {
-    // All points rendered
-    state.active = false;
-    updateRenderStatus(metric, 'done');
-    console.log(`[${metric.toUpperCase()}] Rendering complete`);
-    return;
-  }
-  
-  state.index++;
-  const currentItem = state.queue[state.index];
-  const delay = deltas[state.index - 1] || 4000;
-  
-  const timer = setTimeout(() => {
-    updateRenderStatus(metric, `rendering (${state.index + 1}/${state.queue.length})`);
-    updateChartWithPoint(metric, currentItem.sensor, currentItem.pred, currentItem.raw);
-    scheduleNextRenderPoint(metric, deltas);
-  }, delay);
-  
-  state.timers.push(timer);
-}
-
-function updateRenderStatus(metric, status) {
-  const el = document.getElementById(`${metric}RenderStatus`);
-  if (el) el.textContent = status;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ INCREMENTAL CHART UPDATE                                                │
-// │                                                                          │
-// │ Instead of destroying and recreating the entire chart, we append a    │
-// │ single point to existing datasets and call update().                   │
-// └─────────────────────────────────────────────────────────────────────────┘
-// ═══════════════════════════════════════════════════════════════════════════
-
-function updateChartWithPoint(metric, sensorPoint, predPoint, rawPoint) {
-  const chart = charts[metric];
-  if (!chart || !chart.data) return;
-  
-  // Append to existing labels
-  if (sensorPoint && !chart.data.labels.includes(sensorPoint.time)) {
-    chart.data.labels.push(sensorPoint.time);
-  }
-  
-  // Append to datasets
-  if (sensorPoint) {
-    chart.data.datasets[0].data.push({
-      x: sensorPoint.time,
-      y: sensorPoint.value
-    });
-  }
-  
-  if (predPoint) {
-    chart.data.datasets[1].data.push({
-      x: predPoint.time,
-      y: predPoint.value
-    });
-  }
-  
-  if (rawPoint) {
-    chart.data.datasets[2].data.push({
-      x: rawPoint.time,
-      y: rawPoint.value
-    });
-  }
-  
-  // Lightweight update without animation
-  chart.update('none');
-  
-  // Update current value displays
-  if (sensorPoint) {
-    document.getElementById(`${metric}Current`).textContent = sensorPoint.value.toFixed(1);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Original code below - minimal changes to integrate with new queue system
-// ═══════════════════════════════════════════════════════════════════════════
+let reloadTimer = null, countdown = 3;
 
 setInterval(() => {
   document.getElementById('clockDisplay').textContent =
@@ -708,12 +512,6 @@ document.getElementById('loginPass').addEventListener('keydown', e => {
 
 function doLogout() {
   clearInterval(reloadTimer);
-  // Cancel all render queues
-  ['iaq', 'tvoc', 'eco2', 'etoh'].forEach(m => {
-    const state = renderQueueState[m];
-    state.timers.forEach(t => clearTimeout(t));
-    state.active = false;
-  });
   token = null; user = null;
   localStorage.removeItem('aq_token');
   localStorage.removeItem('aq_user');
@@ -741,13 +539,9 @@ window.addEventListener('load', () => {
 });
 
 document.getElementById('dateInput').addEventListener('change', () => {
-  // Cancel existing render queues
-  ['iaq', 'tvoc', 'eco2', 'etoh'].forEach(m => {
-    const state = renderQueueState[m];
-    state.timers.forEach(t => clearTimeout(t));
-    state.active = false;
-  });
+  clearInterval(reloadTimer);
   loadAll();
+  startCountdown();
 });
 
 // ─── START DASHBOARD ───
@@ -756,12 +550,21 @@ function startDashboard() {
   document.getElementById('dashboard').classList.add('active');
   document.getElementById('dateInput').valueAsDate = new Date();
   loadAll();
-  
-  // Set up reload timer (wait for all rendering to complete before reloading)
+  startCountdown();
+}
+
+function startCountdown() {
+  clearInterval(reloadTimer);
+  countdown = 3;
+  document.getElementById('countdownDisplay').textContent = countdown + 's';
   reloadTimer = setInterval(() => {
-    console.log('Auto-reload triggered');
-    loadAll();
-  }, 300000); // Reload every 5 minutes instead of 3 seconds
+    countdown--;
+    document.getElementById('countdownDisplay').textContent = countdown + 's';
+    if (countdown <= 0) {
+      countdown = 3;
+      loadAll();
+    }
+  }, 1000);
 }
 
 // ─── LOAD DATA ───
@@ -771,7 +574,6 @@ async function loadAll() {
   if (!date) return;
 
   try {
-    document.getElementById('renderStatus').textContent = 'loading';
     const headers = { 'Authorization': `Bearer ${token}` };
     const [sRes, pRes, rRes] = await Promise.all([
       fetch(`${API}/sensors/all?target_date=${date}`,          { headers }),
@@ -792,31 +594,23 @@ async function loadAll() {
     const raw    = await rRes.json();
 
     document.getElementById('fetchErr').style.display = 'none';
-    updateAllWithQueue(sensor, pred, raw); // NEW: Use queue-based rendering
+    updateAll(sensor, pred, raw);
   } catch(e) {
     console.error('Fetch error:', e);
     const errEl = document.getElementById('fetchErr');
     if (errEl) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
-    document.getElementById('renderStatus').textContent = 'error';
   }
 }
 
-// ─── UPDATE WITH QUEUE (NEW) ───
-function updateAllWithQueue(sensor, pred, raw) {
-  // Initialize charts first (empty)
-  ['iaq','tvoc','eco2','etoh'].forEach(m => {
-    renderChart(m, [], [], []);
-  });
-  
-  // Then schedule sequential rendering
+// ─── UPDATE ALL ───
+function updateAll(sensor, pred, raw) {
   ['iaq','tvoc','eco2','etoh'].forEach(m => {
     const s = sensor[m] || [];
     const p = pred[m]   || [];
     const r = raw[m]    || [];
-    scheduleRenderQueue(m, s, p, r);
+    renderChart(m, s, p, r);
+    updateCurrentVal(m, s, p, r);
   });
-  
-  // Update stats and quality on final data
   updateStats(sensor['iaq'] || [], pred['iaq'] || [], raw['iaq'] || []);
   updateCompareTable(sensor, pred, raw);
   updateQuality(sensor['iaq'] || []);
@@ -945,6 +739,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
             minRotation: 0,
             maxTicksLimit: 60,
             callback: function(value, index) {
+              // Hiển thị mỗi 4 giây
               if (index % 4 === 0) {
                 const m = Math.floor(index / 60);
                 const s = index % 60;
@@ -969,6 +764,29 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
       }
     }
   });
+}
+
+// ─── CURRENT VALUES ───
+function updateCurrentVal(metric, sPoints, pPoints, rPoints) {
+  const lastS = sPoints.length ? sPoints[sPoints.length-1].value : null;
+  const lastP = pPoints.length ? pPoints[pPoints.length-1].value : null;
+  const lastR = rPoints.length ? rPoints[rPoints.length-1].value : null;
+
+  const fmt   = v  => v != null ? v.toFixed(1) : '—';
+  const delta = (lastS != null && lastP != null) ? (lastP - lastS).toFixed(2) : '—';
+  const deltaStr = delta !== '—' ? (delta > 0 ? '+' + delta : delta) : '—';
+
+  document.getElementById(`${metric}Current`).textContent = fmt(lastS);
+
+  if (metric === 'iaq') {
+    document.getElementById('iaqCurrent').textContent = fmt(lastS);
+  } else {
+    document.getElementById(`${metric}Pred`).textContent = fmt(lastP);
+    document.getElementById(`${metric}Raw`).textContent  = fmt(lastR);
+    const dEl = document.getElementById(`${metric}Delta`);
+    dEl.textContent = deltaStr;
+    dEl.style.color = delta !== '—' && delta > 0 ? '#ff4444' : delta < 0 ? '#00e676' : '#506070';
+  }
 }
 
 // ─── STATS ───
