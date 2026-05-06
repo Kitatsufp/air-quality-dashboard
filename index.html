@@ -188,7 +188,6 @@
   .legend-line.actual  { background: var(--iaq-color); }
   .legend-line.pred    { border-top: 2px dashed var(--red); background: none; }
   .legend-line.raw     { border-top: 2px dotted var(--raw-color); background: none; }
-  .legend-item.future { color: var(--orange); }
 
   /* ── CHART WRAPPER ── */
   .chart-wrap { position: relative; }
@@ -330,7 +329,6 @@
         <div class="legend-item"><div class="legend-line actual" style="background:var(--iaq-color)"></div> IAQ Thực tế</div>
         <div class="legend-item"><div class="legend-line pred"></div> AI Dự đoán (+5)</div>
         <div class="legend-item"><div class="legend-line raw"></div> Raw</div>
-        <div class="legend-item future"><div class="legend-line" style="background:var(--orange);opacity:0.5"></div> Tương lai</div>
       </div>
       <div class="chart-wrap main">
         <canvas id="iaqChart"></canvas>
@@ -638,39 +636,29 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
 
   const cfg = metaCfg[metric];
 
-  // ✅ FIX: TẠO TIMELINE CHUNG VÀ PHÂN CHIA QUỐC KHỨ / TƯƠNG LAI
+  // TẠO TIMELINE CHUNG TỪ CẢ 3 SOURCE
   const allTimes = new Set([
     ...sPoints.map(p => p.time),
     ...pPoints.map(p => p.time),
     ...rPoints.map(p => p.time)
   ]);
-  const commonTimeline = Array.from(allTimes).sort((a, b) => {
-    const aNum = parseInt(a) || 0;
-    const bNum = parseInt(b) || 0;
-    return aNum - bNum;
-  });
+  const commonTimeline = Array.from(allTimes).sort();
 
   // TẠO MAP CHO PHÉP LOOKUP NHANH
   const sensorMap = new Map(sPoints.map(p => [p.time, p.value]));
   const predMap   = new Map(pPoints.map(p => [p.time, p.value]));
   const rawMap    = new Map(rPoints.map(p => [p.time, p.value]));
 
-  // ✅ FIX: PHÂN CHIA TIMELINE: QUỐC KHỨ (CÓ SENSOR DATA) → TƯƠNG LAI (CHỈ CÓ PRED)
-  const sensorTimes = new Set(sPoints.map(p => p.time));
-  const pastTimeline = commonTimeline.filter(t => sensorTimes.has(t));
-  const futureTimeline = commonTimeline.filter(t => !sensorTimes.has(t));
-  const expandedTimeline = [...pastTimeline, ...futureTimeline];
-
-  // JOIN DỮ LIỆU THEO TIMELINE MỞ RỘNG (QUỐC KHỨ + TƯƠNG LAI)
-  const sensorData = expandedTimeline.map(t => ({
+  // JOIN DỮ LIỆU THEO TIMELINE CHUNG
+  const sensorData = commonTimeline.map(t => ({
     x: t,
     y: sensorMap.get(t) ?? null
   }));
-  const predData = expandedTimeline.map(t => ({
+  const predData = commonTimeline.map(t => ({
     x: t,
     y: predMap.get(t) ?? null
   }));
-  const rawData = expandedTimeline.map(t => ({
+  const rawData = commonTimeline.map(t => ({
     x: t,
     y: rawMap.get(t) ?? null
   }));
@@ -719,7 +707,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   charts[metric] = new Chart(ctx, {
     type: 'line',
     data: { 
-      labels: expandedTimeline,
+      labels: commonTimeline,
       datasets 
     },
     options: {
