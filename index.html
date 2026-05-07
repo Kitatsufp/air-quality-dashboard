@@ -667,7 +667,7 @@ function renderChart(metric, sPoints, pPoints, rPoints) {
   const baseDate = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
   const now = currentTime;
 
-  // ✅ Helper chuyển timestamp -> giây tương đối so với NOW
+  //Helper chuyển timestamp -> giây tương đối so với NOW
   const tsToSeconds = (timeStr) => {
     let t;
     try {
